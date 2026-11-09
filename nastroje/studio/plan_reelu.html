@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plán reelu: __NAZEV__</title>
+<style>
+  :root { --pozadi:#faf7f2; --karta:#ffffff; --text:#2b2522; --slabe:#7d726b; --ramecek:#e4ddd4; --zelena:#2f7d4f;
+          --cervena:#b23a3a; --oranzova:#a8650f; --oranzove-pozadi:#fff4e0; --vyber:#f3d36b; --obrazovka:#3a302b; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; background:var(--pozadi); color:var(--text); font-size:15px; }
+  button { font: inherit; padding:6px 10px; border:1px solid var(--ramecek); background:#fff; border-radius:8px; cursor:pointer; color:var(--text); }
+  button:hover { border-color:#c9bfb4; }
+  button.hlavni { background:var(--zelena); color:#fff; border-color:var(--zelena); font-weight:600; padding:9px 16px; }
+  button.maly { font-size:13px; padding:4px 8px; }
+  button:disabled { opacity:.5; cursor:default; }
+  header { position:sticky; top:0; z-index:5; background:var(--pozadi); border-bottom:1px solid var(--ramecek); padding:10px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; flex:1 1 220px; }
+  .ulozeni { font-size:14px; color:var(--slabe); }
+  .ulozeni.chyba { color:var(--cervena); }
+  .pruh { margin:10px 16px 0; padding:10px 12px; border-radius:10px; font-size:14px; line-height:1.45; }
+  .pruh.stary { background:var(--oranzove-pozadi); border:1px solid #f0d6a8; }
+  .pruh.ok { background:#eef7f0; border:1px solid #cfe6d5; color:var(--zelena); }
+  .rozlozeni { display:grid; grid-template-columns: 300px 1fr; gap:20px; padding:12px 16px 80px; align-items:start; }
+  aside { position:sticky; top:64px; display:flex; flex-direction:column; gap:14px; }
+  video { width:100%; max-height:46vh; background:#000; border-radius:10px; display:block; }
+  .panel { background:var(--karta); border:1px solid var(--ramecek); border-radius:12px; padding:12px; }
+  .panel h2 { font-size:15px; margin:0 0 8px; }
+  .napoveda { font-size:13px; color:var(--slabe); line-height:1.4; margin:4px 0 8px; }
+  .pridat { width:100%; padding:12px; border:2px dashed #cdbfb0; background:#fffdf9; font-weight:600; border-radius:10px; }
+  .knihovna { display:grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap:8px; margin-top:10px; }
+  .medium { border:1px solid var(--ramecek); border-radius:8px; overflow:hidden; background:#f4efe8; cursor:pointer; text-align:left; padding:0; }
+  .medium img { width:100%; aspect-ratio:1; object-fit:contain; display:block; background:#efe8df; }
+  .medium span { display:block; font-size:12px; padding:3px 5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .medium.pouzity span::before { content:"● "; color:var(--zelena); }
+  .zalozky { display:flex; gap:4px; border-bottom:1px solid var(--ramecek); margin-bottom:12px; flex-wrap:wrap; }
+  .zalozky button { border:none; border-bottom:3px solid transparent; border-radius:0; background:none; padding:8px 14px; font-weight:600; color:var(--slabe); }
+  .zalozky button.aktivni { color:var(--text); border-bottom-color:var(--text); }
+  .chybi { background:var(--oranzove-pozadi); border:1px solid #f0d6a8; border-radius:10px; padding:10px 12px; margin-bottom:12px; }
+  .chybi h3 { margin:0 0 6px; font-size:14px; }
+  .chybi .polozka { display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:6px 0; border-top:1px solid #f0d6a8; font-size:14px; }
+  .chybi .polozka:first-of-type { border-top:none; }
+  .chybi .polozka .co { flex:1 1 200px; }
+  .karty { display:grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap:12px; }
+  .karta { background:var(--karta); border:1px solid var(--ramecek); border-radius:12px; overflow:hidden; cursor:pointer; text-align:left; padding:0; display:flex; flex-direction:column; }
+  .karta:hover { border-color:#c9bfb4; }
+  .karta.vybrana { outline:3px solid var(--vyber); outline-offset:1px; }
+  .obrazovka { position:relative; aspect-ratio:9/16; max-height:300px; width:100%; background:var(--obrazovka); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .obrazovka img { width:86%; height:70%; object-fit:contain; }
+  .obrazovka .vice { position:absolute; display:flex; gap:4px; flex-wrap:wrap; justify-content:center; padding:10px; }
+  .obrazovka .vice img { width:44%; height:auto; max-height:40%; }
+  .obrazovka .napis { color:#fff; font-weight:800; font-size:17px; line-height:1.15; text-align:center; padding:10px; text-transform:uppercase; word-break:break-word; }
+  .obrazovka .napis.dole { position:absolute; bottom:12%; left:6%; right:6%; background:rgba(255,255,255,.92); color:var(--text); border-radius:10px; text-transform:none; font-size:15px; }
+  .obrazovka .ikona { color:#e9dfd5; font-size:14px; text-align:center; padding:12px; line-height:1.4; }
+  .obrazovka .ikona b { display:block; font-size:28px; margin-bottom:6px; }
+  .obrazovka.chybi-obr { background:repeating-linear-gradient(45deg, #fbeed6, #fbeed6 10px, #f7e4c2 10px, #f7e4c2 20px); }
+  .obrazovka.chybi-obr .ikona { color:var(--oranzova); font-weight:600; }
+  .popis { padding:8px 10px 10px; display:flex; flex-direction:column; gap:4px; }
+  .typ { font-size:13px; font-weight:700; }
+  .kde { font-size:13px; color:var(--slabe); }
+  .veta-text { font-size:15px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .znacky { display:flex; gap:4px; flex-wrap:wrap; }
+  .znacka { font-size:12px; padding:1px 7px; border-radius:20px; background:#f1ece6; }
+  .znacka.pozor { background:var(--oranzove-pozadi); color:var(--oranzova); font-weight:600; }
+  .proužky { display:flex; flex-direction:column; gap:6px; margin-top:14px; }
+  .prouzek { display:flex; gap:10px; align-items:center; background:var(--karta); border:1px solid var(--ramecek); border-radius:10px; padding:8px 10px; cursor:pointer; text-align:left; width:100%; }
+  .prouzek.vybrana { outline:3px solid var(--vyber); }
+  .prouzek .kde { flex:0 0 60px; }
+  .prouzek .t { flex:1; font-size:14px; color:var(--slabe); }
+  h3.oddil { font-size:14px; color:var(--slabe); margin:18px 0 8px; font-weight:600; }
+  .veta { display:grid; grid-template-columns: 36px 1fr; gap:8px; padding:10px 8px; border-bottom:1px solid var(--ramecek); border-radius:8px; }
+  .veta.vybrana { background:#fff8e1; }
+  .veta.smazana .text { text-decoration:line-through; color:var(--slabe); }
+  .veta .text { font-size:16px; line-height:1.5; }
+  .slovo { cursor:pointer; padding:0 1px; border-radius:3px; }
+  .slovo:hover { background:#fff0c2; }
+  .slovo.ven { text-decoration:line-through; color:var(--cervena); }
+  .cipy { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; align-items:center; }
+  .cip { display:flex; gap:6px; align-items:center; font-size:13px; padding:3px 8px 3px 3px; border-radius:20px; background:#f1ece6; border:1px solid var(--ramecek); }
+  .cip img { width:26px; height:26px; object-fit:cover; border-radius:50%; }
+  .cip .tecka { width:26px; height:26px; border-radius:50%; background:var(--obrazovka); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; }
+  .cip.chybi { background:var(--oranzove-pozadi); color:var(--oranzova); }
+  dialog { border:none; border-radius:14px; padding:0; width:min(560px, calc(100vw - 32px)); max-height:calc(100vh - 40px); }
+  dialog::backdrop { background:rgba(40,30,25,.45); }
+  .dlg { padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .dlg h2 { margin:0; font-size:18px; }
+  .dlg label { font-size:13px; font-weight:600; display:block; margin-bottom:4px; }
+  .dlg select, .dlg input[type=text], .dlg textarea { width:100%; font:inherit; padding:8px; border:1px solid var(--ramecek); border-radius:8px; background:#fff; }
+  .dlg .citace { background:#f6f1ea; border-radius:8px; padding:8px 10px; font-size:15px; line-height:1.45; }
+  .dlg .vyber-obr { display:grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap:6px; }
+  .dlg .vyber-obr .medium.zvoleny { outline:3px solid var(--zelena); }
+  .dlg .tlacitka { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  .dlg .konflikt { background:var(--oranzove-pozadi); border-radius:8px; padding:8px 10px; font-size:14px; }
+  .nic { color:var(--slabe); font-size:14px; padding:12px 0; }
+  footer { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--ramecek); padding:10px 16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; z-index:5; }
+  footer .info { font-size:14px; color:var(--slabe); flex:1 1 240px; }
+  @media (max-width: 820px) {
+    .rozlozeni { grid-template-columns: 1fr; }
+    aside { position:static; }
+    video { max-height:50vh; width:auto; margin:0 auto; }
+    .karty { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Plán reelu: __NAZEV__</h1>
+  <span class="ulozeni" id="ulozeni"></span>
+  <button class="hlavni" id="ulozit">Uložit změny</button>
+</header>
+<div id="pruh-nahled"></div>
+<div class="rozlozeni">
+  <aside>
+    <div>
+      <video id="video" controls preload="metadata" src="/video"></video>
+      <div class="napoveda" id="video-popis"></div>
+    </div>
+    <div class="panel">
+      <h2>Moje média</h2>
+      <div class="napoveda">Tvoje fotky, screenshoty a logo. Studio do videa dá jen to, co sem nahraješ. Nic si nevymýšlí.</div>
+      <button class="pridat" id="pridat">+ Přidat fotku, screenshot nebo logo</button>
+      <input type="file" id="soubor" accept="image/png,image/jpeg,image/webp" multiple hidden>
+      <input type="file" id="soubor-vymena" accept="image/png,image/jpeg,image/webp" hidden>
+      <div class="knihovna" id="knihovna"></div>
+    </div>
+  </aside>
+  <main>
+    <div class="zalozky" id="zalozky">
+      <button data-z="sceny" class="aktivni">Scény</button>
+      <button data-z="text">Text</button>
+      <button data-z="vzhled">Vzhled</button>
+      <button data-z="zvuk">Zvuk</button>
+    </div>
+    <section id="z-sceny"></section>
+    <section id="z-text" hidden></section>
+    <section id="z-vzhled" hidden></section>
+    <section id="z-zvuk" hidden></section>
+  </main>
+</div>
+<footer>
+  <span class="info">Až budeš hotová, klikni na Hotovo a napiš Claudovi „vytvoř reel“. Nové video vznikne podle tohohle plánu.</span>
+  <button id="hotovo">Hotovo</button>
+</footer>
+<dialog id="dlg"><div class="dlg" id="dlg-obsah"></div></dialog>
+<script>
+const DATA = __DATA__;
+const plan = JSON.parse(JSON.stringify(DATA.plan));
+let otiskPlanu = DATA.otisk_planu;
+let media = DATA.media.slice();
+const odkazy = Object.assign({}, DATA.odkazy);
+const text = { smazane: new Set(), ven: {} };
+for (const v of DATA.vety) text.ven[v.id] = new Set(v.slova.filter(s => s.vynechano).map(s => s.i));
+let zmenyPlan = false, zmenyText = false, vybranaVeta = null, zalozka = 'sceny', nahled = DATA.nahled;
+const video = document.getElementById('video');
+const vetaPodleId = {}; DATA.vety.forEach((v, i) => { vetaPodleId[v.id] = Object.assign({ cislo: i + 1 }, v); });
+
+function h(tag, attrs, ...deti) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === 'on') for (const [u, f] of Object.entries(v)) el.addEventListener(u, f);
+    else if (k === 'text') el.textContent = v;
+    else if (v !== null && v !== undefined && v !== false) el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const d of deti.flat()) if (d !== null && d !== undefined && d !== false) el.append(d.nodeType ? d : document.createTextNode(d));
+  return el;
+}
+function fmt(s) { s = Math.max(0, s || 0); const m = Math.floor(s / 60); return m + ':' + (s - m * 60).toFixed(1).padStart(4, '0'); }
+function jmeno(prvek) { return (DATA.jmena[prvek] || prvek).replace('⚠️ ', ''); }
+function cisty(t) { return (t || '').replace(/\*/g, '').replace(/\s*[\/|]\s*/g, ' · '); }
+
+// obrázky v obsahu řádku: „soubor | štítek“, „a.jpg / b.jpg“
+function obrazkyRadku(r) {
+  const out = [];
+  for (const kus of String(r.obsah || '').replace(/\|/g, '\n').replace(/ \/ /g, '\n').split('\n')) {
+    const k = kus.trim();
+    if (/\.(png|jpe?g|webp)$/i.test(k)) out.push({ text: k, klic: odkazy[k] || odkazy[k.split('/').pop()] || null });
+  }
+  return out;
+}
+function urlMedia(klic) { const m = media.find(x => x.klic === klic); return m ? m.url : null; }
+function radkyVety(id) { return plan.radky.filter(r => r.veta === id); }
+function vyznamny(r) { return r.prvek !== 'zoom'; }
+function pozor(r) { return !!(r.zkontrolovat || r.navrh); }
+function chybiObrazek(r) { return r.prvek === 'chybi_obrazek'; }
+
+function zmenaPlanu(r) { if (r) { r.rucne = true; } zmenyPlan = true; ukazUlozeni(); vykresli(); }
+function ukazUlozeni(t, chyba) {
+  const el = document.getElementById('ulozeni');
+  el.className = 'ulozeni' + (chyba ? ' chyba' : '');
+  el.textContent = t || ((zmenyPlan || zmenyText) ? 'Máš neuložené změny.' : '');
+}
+
+function pruhNahledu() {
+  const el = document.getElementById('pruh-nahled'); el.innerHTML = '';
+  const casti = [];
+  if (nahled.cekaji_upravy) casti.push('úpravy textu čekají na nový střih');
+  if (nahled.zmeny && nahled.zmeny.length) casti.push('změněno od posledního videa: ' + nahled.zmeny.join(', '));
+  if (nahled.stav === 'aktualni' && !zmenyPlan && !zmenyText) {
+    el.append(h('div', { class: 'pruh ok', text: '✓ Náhled odpovídá poslednímu uloženému plánu.' }));
+  } else if (nahled.stav === 'zadne') {
+    el.append(h('div', { class: 'pruh stary', text: 'Video zatím není. Až plán uložíš, napiš Claudovi „vytvoř reel“.' }));
+  } else if (nahled.stav === 'nevim') {
+    if (zmenyPlan || zmenyText) casti.unshift('máš neuložené změny');
+    el.append(h('div', { class: 'pruh stary', text: 'Nevím, jestli náhled odpovídá plánu (video vzniklo dřív, než to studio umělo poznat). Pro jistotu vytvoř reel znovu.' + (casti.length ? ' Navíc: ' + casti.join('; ') + '.' : '') }));
+  } else {
+    if (zmenyPlan || zmenyText) casti.unshift('máš neuložené změny');
+    el.append(h('div', { class: 'pruh stary' }, h('b', { text: 'Náhled zatím neobsahuje poslední úpravy. ' }), casti.join('; ') + '. Nové video vytvoří Claude, když mu napíšeš „vytvoř reel“.'));
+  }
+  document.getElementById('video-popis').textContent = DATA.video ? 'Video: ' + DATA.video : '';
+}
+
+// ---------- knihovna médií ----------
+function pouziti(klic) {
+  const out = [];
+  for (const r of plan.radky) if (obrazkyRadku(r).some(o => o.klic === klic)) out.push(r);
+  return out;
+}
+function vykresliKnihovnu() {
+  const k = document.getElementById('knihovna'); k.innerHTML = '';
+  const vlastni = media.filter(m => m.knihovna);
+  if (!vlastni.length) k.append(h('div', { class: 'nic', text: 'Zatím tu nic není.' }));
+  for (const m of vlastni) {
+    const pouzity = pouziti(m.klic).length > 0;
+    k.append(h('button', { class: 'medium' + (pouzity ? ' pouzity' : ''), title: m.jmeno + (pouzity ? ' (ve videu)' : ''), on: { click: () => dialogMedia(m) } },
+      h('img', { src: m.url, alt: m.jmeno, loading: 'lazy' }), h('span', { text: m.jmeno })));
+  }
+}
+async function nahraj(soubory) {
+  const nove = [];
+  for (const f of soubory) {
+    ukazUlozeni('Nahrávám ' + f.name + '…');
+    try {
+      const r = await fetch('/nahraj?jmeno=' + encodeURIComponent(f.name), { method: 'POST', body: f });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.chyba || r.status);
+      media.push(d.media); odkazy[d.media.jmeno] = d.media.klic; nove.push(d.media);
+    } catch (e) { ukazUlozeni('Nahrání nešlo: ' + e.message, true); alert('Nahrání nešlo: ' + e.message); }
+  }
+  if (nove.length) ukazUlozeni(nove.length === 1 ? 'Nahráno: ' + nove[0].jmeno : 'Nahráno ' + nove.length + ' souborů.');
+  vykresliKnihovnu();
+  return nove;
+}
+document.getElementById('pridat').onclick = () => document.getElementById('soubor').click();
+document.getElementById('soubor').onchange = async e => { await nahraj([...e.target.files]); e.target.value = ''; };
+
+function dialogMedia(m) {
+  const kde = pouziti(m.klic);
+  otevriDialog(
+    h('h2', { text: m.jmeno }),
+    h('img', { src: m.url, alt: m.jmeno, style: 'max-width:100%;max-height:40vh;object-fit:contain;border-radius:8px;background:#efe8df' }),
+    h('div', { class: 'napoveda', text: kde.length ? 'Ve videu u ' + kde.map(r => 'věty ' + (vetaPodleId[r.veta] || {}).cislo).join(', ') + '.' : 'Zatím není u žádné scény.' }),
+    h('div', {}, h('label', { text: 'Přiřadit ke scéně (k větě)' }), vyberVety(id => { pridejObrazekKVete(id, m); zavriDialog(); })),
+    h('div', { class: 'tlacitka' },
+      h('button', { text: 'Vyměnit za jiný soubor', on: { click: () => vymenMedium(m) } }),
+      h('button', { text: 'Odložit', on: { click: () => odlozMedium(m) } }),
+      h('button', { text: 'Zavřít', on: { click: zavriDialog } })));
+}
+function vyberVety(naVyber) {
+  const s = h('select', {}, h('option', { value: '', text: 'Vyber větu…' }),
+    DATA.vety.map(v => h('option', { value: v.id, text: (vetaPodleId[v.id].cislo) + '. ' + v.text.slice(0, 70) })));
+  s.onchange = () => { if (s.value) naVyber(s.value); };
+  return s;
+}
+function pridejObrazekKVete(id, m) {
+  const radky = radkyVety(id);
+  const cil = radky.find(r => r.prvek === 'chybi_obrazek') || radky.find(r => r.prvek === 'zoom');
+  if (cil) { cil.prvek = 'vlozka'; cil.obsah = m.jmeno; delete cil.odmitnuto; zmenaPlanu(cil); }
+  else {
+    const v = vetaPodleId[id];
+    const r = { veta: id, text: v.text, text_vety: v.text, od: v.od, do: v.do, prvek: 'vlozka', obsah: m.jmeno, duvod: 'přidala zákaznice', zdroj: 'zákaznice', typ: 'vlozka' };
+    plan.radky.splice(poziceVety(id), 0, r); zmenaPlanu(r);
+  }
+  vybranaVeta = id; vykresli();
+}
+function poziceVety(id) {
+  const poradi = DATA.vety.map(v => v.id), cil = poradi.indexOf(id);
+  let i = 0;
+  while (i < plan.radky.length && poradi.indexOf(plan.radky[i].veta) <= cil) i++;
+  return i;
+}
+function vymenMedium(m) {
+  const vstup = document.getElementById('soubor-vymena');
+  vstup.onchange = async e => {
+    const nove = await nahraj([...e.target.files]); e.target.value = '';
+    if (!nove.length) return;
+    for (const r of pouziti(m.klic)) {
+      for (const o of obrazkyRadku(r)) if (o.klic === m.klic) r.obsah = r.obsah.split(o.text).join(nove[0].jmeno);
+      zmenaPlanu(r);
+    }
+    zavriDialog(); vykresli();
+    ukazUlozeni('Vyměněno ve scénách. Ulož změny, pak můžeš starý obrázek odložit.');
+  };
+  vstup.click();
+}
+async function odlozMedium(m) {
+  const kde = pouziti(m.klic);
+  if (kde.length) {
+    if (!confirm('Obrázek je ve ' + kde.length + ' scéně/scénách. Odebrat ho z nich (scéna pak bude jen přiblížení) a odložit?')) return;
+    for (const r of kde) { r.prvek = 'zoom'; r.obsah = ''; zmenaPlanu(r); }
+    if (!(await uloz())) return;
+  }
+  const r = await fetch('/odloz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jmeno: m.jmeno }) });
+  const d = await r.json();
+  if (!r.ok) { alert(d.chyba); return; }
+  media = media.filter(x => x.klic !== m.klic);
+  zavriDialog(); vykresli(); ukazUlozeni('Odloženo do PODKLADY-SEM/ODLOZENE (nic se nesmazalo).');
+}
+
+// ---------- scény ----------
+function obrazovka(r) {
+  if (chybiObrazek(r)) return h('div', { class: 'obrazovka chybi-obr' }, h('div', { class: 'ikona' }, h('b', { text: '＋' }), 'Tady by se hodil screenshot nebo fotka'));
+  const obr = obrazkyRadku(r).map(o => o.klic && urlMedia(o.klic)).filter(Boolean);
+  if (obr.length === 1) return h('div', { class: 'obrazovka' }, h('img', { src: obr[0], alt: '' }));
+  if (obr.length > 1) return h('div', { class: 'obrazovka' }, h('div', { class: 'vice' }, obr.slice(0, 4).map(u => h('img', { src: u, alt: '' }))));
+  if (obrazkyRadku(r).length) return h('div', { class: 'obrazovka chybi-obr' }, h('div', { class: 'ikona', text: 'Obrázek nenalezen: ' + obrazkyRadku(r)[0].text.split('/').pop() }));
+  if (r.prvek === 'vyzva') return h('div', { class: 'obrazovka' }, h('div', { class: 'napis dole', text: cisty(r.obsah) }));
+  if (DATA.textove.includes(r.prvek) && r.obsah) return h('div', { class: 'obrazovka' }, h('div', { class: 'napis', text: cisty(r.prvek === 'karty_slov' ? r.obsah.replace(/\|/g, ' / ') : r.obsah).slice(0, 90) }));
+  return h('div', { class: 'obrazovka' }, h('div', { class: 'ikona' }, h('b', { text: '✦' }), jmeno(r.prvek)));
+}
+function znacky(r) {
+  const z = [];
+  if (r.zkontrolovat) z.push(h('span', { class: 'znacka pozor', text: '⚠️ ' + r.zkontrolovat }));
+  if (r.navrh) z.push(h('span', { class: 'znacka pozor', text: 'studio navrhuje jinak' }));
+  if (r.odmitnuto) z.push(h('span', { class: 'znacka', text: 'odmítnuto' }));
+  else if (r.rucne) z.push(h('span', { class: 'znacka', text: '✋ tvoje úprava' }));
+  return z.length ? h('div', { class: 'znacky' }, z) : null;
+}
+function karta(r, bezVety) {
+  const v = vetaPodleId[r.veta];
+  return h('button', { class: 'karta' + (vybranaVeta === r.veta ? ' vybrana' : ''), 'data-veta': r.veta, on: { click: () => { vybranaVeta = r.veta; dialogSceny(r, bezVety); vykresli(); } } },
+    obrazovka(r),
+    h('div', { class: 'popis' },
+      h('div', { class: 'typ', text: chybiObrazek(r) ? 'Chybí obrázek' : jmeno(r.prvek) }),
+      h('div', { class: 'kde', text: v ? 'Věta ' + v.cislo + ' · ' + fmt(v.od) : 'Věta už v reelu není' }),
+      h('div', { class: 'veta-text', text: r.text || (v && v.text) || '' }),
+      znacky(r)));
+}
+function vykresliChybi(kam) {
+  const chybi = plan.radky.filter(chybiObrazek);
+  if (!chybi.length) return;
+  const box = h('div', { class: 'chybi' }, h('h3', { text: 'K dokončení reelu chybí (' + chybi.length + ')' }),
+    h('div', { class: 'napoveda', text: 'Studio by tu ukázalo tvůj obrázek. Když ho nechceš, klikni Ne, díky. Už se nevrátí.' }));
+  for (const r of chybi) {
+    const v = vetaPodleId[r.veta];
+    box.append(h('div', { class: 'polozka' },
+      h('span', { class: 'co', text: 'Screenshot nebo fotka u věty ' + (v ? v.cislo : '?') + ': „' + (r.text || '').slice(0, 60) + '…“' }),
+      h('button', { class: 'maly', text: 'Nahrát', on: { click: () => nahrajKRadku(r) } }),
+      h('button', { class: 'maly', text: 'Textová kartička', on: { click: () => kartickaMistoObrazku(r) } }),
+      h('button', { class: 'maly', text: 'Ne, díky', on: { click: () => odmitni(r) } })));
+  }
+  kam.append(box);
+}
+function nahrajKRadku(r) {
+  const vstup = document.getElementById('soubor-vymena');
+  vstup.onchange = async e => {
+    const nove = await nahraj([...e.target.files]); e.target.value = '';
+    if (nove.length) { r.prvek = 'vlozka'; r.obsah = nove[0].jmeno; delete r.odmitnuto; zmenaPlanu(r); zavriDialog(); }
+  };
+  vstup.click();
+}
+function kartickaMistoObrazku(r) {
+  r.prvek = 'mini'; r.obsah = (r.text || '').replace(/[.,!?]/g, '').split(/\s+/).slice(0, 4).join(' ').toUpperCase(); zmenaPlanu(r);
+  dialogSceny(r);
+}
+function odmitni(r) { r.odmitnuto = 'chybi_obrazek'; r.prvek = 'zoom'; r.obsah = ''; zmenaPlanu(r); }
+
+function vykresliSceny() {
+  const el = document.getElementById('z-sceny'); el.innerHTML = '';
+  vykresliChybi(el);
+  el.append(h('div', { class: 'napoveda', text: 'Každá karta je jedna věc, která se ve videu objeví. Klikni na kartu a uvidíš větu a co jde změnit. Video se podle plánu vytvoří, až napíšeš Claudovi.' }));
+  const karty = h('div', { class: 'karty' }), prouzky = h('div', { class: 'proužky' });
+  for (const v of DATA.vety) {
+    const radky = radkyVety(v.id);
+    const vidim = radky.filter(r => vyznamny(r) || pozor(r));
+    for (const r of vidim) karty.append(karta(r));
+    if (!vidim.length) {
+      prouzky.append(h('button', { class: 'prouzek' + (vybranaVeta === v.id ? ' vybrana' : ''), on: { click: () => { vybranaVeta = v.id; dialogPridat(v.id); vykresli(); } } },
+        h('span', { class: 'kde', text: 'Věta ' + vetaPodleId[v.id].cislo }),
+        h('span', { class: 't', text: v.text }),
+        h('span', { class: 'znacka', text: radky.some(r => r.odmitnuto) ? 'odmítnuto · jen přiblížení' : 'jen přiblížení' })));
+    }
+  }
+  el.append(karty.childElementCount ? karty : h('div', { class: 'nic', text: 'V plánu zatím nic není.' }));
+  if (prouzky.childElementCount) { el.append(h('h3', { class: 'oddil', text: 'Věty bez prvku (jen přiblížení). Klikni a můžeš něco přidat.' })); el.append(prouzky); }
+  if (plan.bez_vety.length) {
+    el.append(h('h3', { class: 'oddil', text: 'Bez věty: věta už v reelu není. Nic se nepřesunulo samo, rozhodni, kam patří.' }));
+    el.append(h('div', { class: 'karty' }, plan.bez_vety.map(r => karta(r, true))));
+  }
+}
+
+function polePrvku(r) {
+  const moznosti = DATA.jednoduche.includes(r.prvek) ? DATA.jednoduche : [r.prvek].concat(DATA.jednoduche);
+  const s = h('select', {}, moznosti.map(p => h('option', { value: p, text: jmeno(p), selected: p === r.prvek })));
+  return s;
+}
+function dialogSceny(r, bezVety) {
+  const v = vetaPodleId[r.veta];
+  const kopie = Object.assign({}, r);
+  const telo = h('div', { class: 'dlg' });
+  const vykresliTelo = () => {
+    telo.innerHTML = '';
+    telo.append(h('h2', { text: chybiObrazek(kopie) ? 'Chybí obrázek' : jmeno(kopie.prvek) }));
+    telo.append(h('div', {}, h('label', { text: v ? 'Věta ' + v.cislo + ' (' + fmt(v.od) + ')' : 'Věta už v reelu není' }),
+      h('div', { class: 'citace', text: (v ? v.text : r.text) || '' }),
+      v ? h('div', { class: 'tlacitka', style: 'justify-content:flex-start;margin-top:6px' },
+        h('button', { class: 'maly', text: '▶ Přehrát větu', on: { click: () => { video.currentTime = v.od; video.play(); } } }),
+        h('button', { class: 'maly', text: 'Ukázat v textu', on: { click: () => { zavriDialog(); vybranaVeta = r.veta; prepni('text'); } } })) : null));
+    if (r.zkontrolovat) {
+      telo.append(h('div', { class: 'konflikt' }, h('b', { text: '⚠️ ' + r.zkontrolovat + '. ' }),
+        r.text_drive ? 'Dřív: „' + r.text_drive + '“. ' : '', 'Patří tenhle prvek pořád k téhle větě?',
+        h('div', { class: 'tlacitka', style: 'justify-content:flex-start;margin-top:6px' },
+          v ? h('button', { class: 'maly', text: 'Ano, sedí', on: { click: () => { delete r.zkontrolovat; delete r.text_drive; zmenaPlanu(r); zavriDialog(); } } }) : null,
+          h('button', { class: 'maly', text: 'Dát k jiné větě', on: { click: () => { jinaVeta = true; vykresliTelo(); } } }))));
+    }
+    if (r.navrh) {
+      telo.append(h('div', { class: 'konflikt' }, 'Studio teď navrhuje: ', h('b', { text: jmeno(r.navrh.prvek) + (r.navrh.obsah ? ' „' + cisty(r.navrh.obsah) + '“' : '') }), '. Tvoje verze zůstává, dokud nerozhodneš.',
+        h('div', { class: 'tlacitka', style: 'justify-content:flex-start;margin-top:6px' },
+          h('button', { class: 'maly', text: 'Nechat moje', on: { click: () => { r.odmitnuty_navrh = { prvek: r.navrh.prvek, obsah: r.navrh.obsah }; delete r.navrh; zmenaPlanu(r); zavriDialog(); } } }),
+          h('button', { class: 'maly', text: 'Vzít návrh studia', on: { click: () => { r.prvek = r.navrh.prvek; r.obsah = r.navrh.obsah; delete r.navrh; delete r.odmitnuto; zmenaPlanu(r); zavriDialog(); } } }))));
+    }
+    if (jinaVeta || bezVety) {
+      telo.append(h('div', {}, h('label', { text: 'K jiné větě' }), vyberVety(id => {
+        const nova = vetaPodleId[id];
+        if (bezVety) { plan.bez_vety = plan.bez_vety.filter(x => x !== r); r.veta = id; plan.radky.splice(poziceVety(id), 0, r); }
+        else { plan.radky.splice(plan.radky.indexOf(r), 1); r.veta = id; plan.radky.splice(poziceVety(id), 0, r); }
+        r.text = nova.text; r.text_vety = nova.text; r.od = nova.od; r.do = nova.do; delete r.zkontrolovat; delete r.text_drive;
+        zmenaPlanu(r); vybranaVeta = id; zavriDialog();
+      })));
+    }
+    if (chybiObrazek(kopie)) {
+      telo.append(h('div', { class: 'tlacitka', style: 'justify-content:flex-start' },
+        h('button', { text: 'Nahrát obrázek', on: { click: () => nahrajKRadku(r) } }),
+        h('button', { text: 'Textová kartička', on: { click: () => kartickaMistoObrazku(r) } }),
+        h('button', { text: 'Ne, díky', on: { click: () => { odmitni(r); zavriDialog(); } } })));
+      if (media.some(m => m.knihovna)) telo.append(vyberObrazku(kopie, false, () => { r.prvek = 'vlozka'; r.obsah = kopie.obsah; zmenaPlanu(r); zavriDialog(); }));
+    } else {
+      const pole = polePrvku(kopie);
+      pole.onchange = () => { kopie.prvek = pole.value; if (!['vlozka', 'karticky'].includes(kopie.prvek) && obrazkyRadku(kopie).length) kopie.obsah = ''; vykresliTelo(); };
+      telo.append(h('div', {}, h('label', { text: 'Co se objeví' }), pole,
+        DATA.jednoduche.includes(kopie.prvek) ? null : h('div', { class: 'napoveda', text: 'Tenhle prvek má víc nastavení. Změny v něm napiš Claudovi.' })));
+      if (kopie.prvek === 'vlozka' || kopie.prvek === 'karticky') {
+        telo.append(vyberObrazku(kopie, kopie.prvek === 'karticky'));
+        if (kopie.prvek === 'vlozka') {
+          const dily = String(kopie.obsah || '').split('|');
+          const stitek = h('input', { type: 'text', value: (dily[1] || '').trim(), placeholder: 'třeba: Můj web' });
+          stitek.oninput = () => { const d = String(kopie.obsah || '').split('|'); kopie.obsah = d[0].trim() + (stitek.value.trim() ? ' | ' + stitek.value.trim() : '') + d.slice(2).map(x => ' |' + x).join(''); };
+          telo.append(h('div', {}, h('label', { text: 'Popisek pod obrázkem (nepovinné)' }), stitek));
+        }
+      } else if (kopie.prvek !== 'zoom' && DATA.jednoduche.includes(kopie.prvek)) {
+        const ta = h('textarea', { rows: 2 }); ta.value = kopie.obsah || '';
+        ta.oninput = () => { kopie.obsah = ta.value; };
+        const rada = { mini: 'Krátký nadpis, 2 až 4 slova. Hvězdičky *TAKHLE* = zvýraznit, lomítko = druhý řádek.', karty_slov: 'Slova oddělená svislou čárou |, každé na své kartě.',
+          velke_slovo: 'Jedno slovo z věty.', vyzva: 'Text výzvy. Lomítko = druhý řádek.' }[kopie.prvek] || '';
+        telo.append(h('div', {}, h('label', { text: 'Text na obrazovce' }), ta, h('div', { class: 'napoveda', text: rada })));
+      }
+    }
+    telo.append(h('div', { class: 'tlacitka' },
+      bezVety ? null : h('button', { text: 'Přidat další prvek k větě', on: { click: () => { zavriDialog(); dialogPridat(r.veta); } } }),
+      vyznamny(r) && !bezVety ? h('button', { text: 'Odebrat z videa', on: { click: () => { r.prvek = 'zoom'; r.obsah = ''; delete r.navrh; zmenaPlanu(r); zavriDialog(); } } }) : null,
+      h('button', { text: 'Zavřít', on: { click: zavriDialog } }),
+      chybiObrazek(kopie) ? null : h('button', { class: 'hlavni', text: 'Použít', on: { click: () => {
+        if (kopie.prvek !== r.prvek || (kopie.obsah || '') !== (r.obsah || '')) { r.prvek = kopie.prvek; r.obsah = kopie.obsah || ''; delete r.odmitnuto; zmenaPlanu(r); }
+        zavriDialog(); } } })));
+  };
+  let jinaVeta = false;
+  vykresliTelo();
+  otevriDialog(telo);
+}
+function vyberObrazku(kopie, vice, poVyberu) {
+  const zvolene = new Set(obrazkyRadku(kopie).map(o => o.text));
+  const mrizka = h('div', { class: 'vyber-obr' });
+  const kresli = () => {
+    mrizka.innerHTML = '';
+    for (const m of media.filter(x => x.knihovna || zvolene.has(x.jmeno) || [...zvolene].some(t => odkazy[t] === x.klic))) {
+      const text = [...zvolene].find(t => odkazy[t] === m.klic) || m.jmeno;
+      const je = zvolene.has(text);
+      mrizka.append(h('button', { class: 'medium' + (je ? ' zvoleny' : ''), type: 'button', title: m.jmeno, on: { click: () => {
+        if (vice) { if (je) zvolene.delete(text); else zvolene.add(text); kopie.obsah = [...zvolene].join(' / '); }
+        else { const d = String(kopie.obsah || '').split('|'); kopie.obsah = m.jmeno + d.slice(1).map(x => ' |' + x).join(''); zvolene.clear(); zvolene.add(m.jmeno); }
+        kresli(); if (poVyberu) poVyberu();
+      } } }, h('img', { src: m.url, alt: m.jmeno }), h('span', { text: m.jmeno })));
+    }
+    mrizka.append(h('button', { class: 'medium', type: 'button', on: { click: async () => {
+      document.getElementById('soubor').onchange = async e => { await nahraj([...e.target.files]); e.target.value = ''; document.getElementById('soubor').onchange = puvodniNahrani; kresli(); };
+      document.getElementById('soubor').click();
+    } } }, h('div', { style: 'aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:26px', text: '+' }), h('span', { text: 'Nahrát nový' })));
+  };
+  kresli();
+  return h('div', {}, h('label', { text: vice ? 'Obrázky (vyber 3 až 5)' : 'Obrázek' }), mrizka);
+}
+const puvodniNahrani = document.getElementById('soubor').onchange;
+function dialogPridat(id) {
+  const v = vetaPodleId[id];
+  const r = { veta: id, text: v.text, text_vety: v.text, od: v.od, do: v.do, prvek: 'mini', obsah: '', duvod: 'přidala zákaznice', zdroj: 'zákaznice', typ: 'ostatni' };
+  const zoom = radkyVety(id).find(x => x.prvek === 'zoom' && !x.odmitnuto);
+  const telo = h('div', { class: 'dlg' }, h('h2', { text: 'Přidat k větě ' + v.cislo }), h('div', { class: 'citace', text: v.text }),
+    h('div', { class: 'tlacitka', style: 'justify-content:flex-start' },
+      h('button', { class: 'maly', text: '▶ Přehrát větu', on: { click: () => { video.currentTime = v.od; video.play(); } } })),
+    h('div', { class: 'tlacitka', style: 'justify-content:flex-start' },
+      h('button', { text: 'Obrázek nebo screenshot', on: { click: () => vloz('vlozka') } }),
+      h('button', { text: 'Nadpis', on: { click: () => vloz('mini') } }),
+      h('button', { text: 'Velké slovo', on: { click: () => vloz('velke_slovo') } }),
+      h('button', { text: 'Zavřít', on: { click: zavriDialog } })));
+  function vloz(prvek) {
+    let cil = zoom;
+    if (cil) { cil.prvek = prvek; cil.obsah = ''; } else { r.prvek = prvek; plan.radky.splice(poziceVety(id), 0, r); cil = r; }
+    zmenaPlanu(cil); zavriDialog(); dialogSceny(cil);
+  }
+  otevriDialog(telo);
+}
+
+// ---------- text ----------
+function cipy(id) {
+  const out = [];
+  for (const r of radkyVety(id).filter(x => vyznamny(x) || pozor(x))) {
+    const obr = obrazkyRadku(r).map(o => o.klic && urlMedia(o.klic)).filter(Boolean)[0];
+    out.push(h('button', { class: 'cip' + (chybiObrazek(r) ? ' chybi' : ''), title: 'Otevřít scénu', on: { click: e => { e.stopPropagation(); vybranaVeta = id; prepni('sceny'); dialogSceny(r); } } },
+      obr ? h('img', { src: obr, alt: '' }) : h('span', { class: 'tecka', text: chybiObrazek(r) ? '!' : '✦' }),
+      (chybiObrazek(r) ? 'chybí obrázek' : jmeno(r.prvek)) + (r.obsah && !obr && DATA.textove.includes(r.prvek) ? ': ' + cisty(r.obsah).slice(0, 30) : '')));
+  }
+  out.push(h('button', { class: 'maly', text: '+ přidat', on: { click: e => { e.stopPropagation(); dialogPridat(id); } } }));
+  return h('div', { class: 'cipy' }, out);
+}
+function vykresliText() {
+  const el = document.getElementById('z-text'); el.innerHTML = '';
+  el.append(h('div', { class: 'napoveda', text: 'Pod každou větou vidíš, co se u ní ve videu objeví. Klikni na slovo a vystřihne se (znovu kliknout = vrátit). Úpravy textu se projeví po novém střihu.' }));
+  for (const v of DATA.vety) {
+    const smazana = text.smazane.has(v.id);
+    const t = h('div', { class: 'text' });
+    v.slova.forEach((s, n) => {
+      t.append(h('span', { class: 'slovo' + (text.ven[v.id].has(s.i) ? ' ven' : ''), text: s.w, on: { click: e => {
+        e.stopPropagation(); if (text.ven[v.id].has(s.i)) text.ven[v.id].delete(s.i); else text.ven[v.id].add(s.i); zmenyText = true; ukazUlozeni(); vykresli(); } } }));
+      if (n < v.slova.length - 1) t.append(' ');
+    });
+    el.append(h('div', { class: 'veta' + (smazana ? ' smazana' : '') + (vybranaVeta === v.id ? ' vybrana' : ''), id: 'veta-' + v.id, on: { click: () => { vybranaVeta = v.id; vykresli(); } } },
+      h('div', {}, h('button', { class: 'maly', title: 'Přehrát od téhle věty', text: '▶', on: { click: e => { e.stopPropagation(); video.currentTime = v.od; video.play(); } } }),
+        h('div', { class: 'kde', style: 'margin-top:4px', text: String(vetaPodleId[v.id].cislo) })),
+      h('div', {}, t, cipy(v.id),
+        h('div', { class: 'cipy' }, h('button', { class: 'maly', text: smazana ? '↩ Vrátit větu' : '🗑 Vystřihnout větu', on: { click: e => {
+          e.stopPropagation(); if (smazana) text.smazane.delete(v.id); else text.smazane.add(v.id); zmenyText = true; ukazUlozeni(); vykresli(); } } })))));
+  }
+}
+function upravyTextu() {
+  const ven = {}, vracena = {};
+  for (const v of DATA.vety) {
+    const puv = new Set(v.slova.filter(s => s.vynechano).map(s => s.i)), ted = text.ven[v.id];
+    const nove = [...ted].filter(i => !puv.has(i)).sort((a, b) => a - b), zpet = [...puv].filter(i => !ted.has(i)).sort((a, b) => a - b);
+    if (nove.length) ven[v.id] = nove;
+    if (zpet.length) vracena[v.id] = zpet;
+  }
+  return { verze: 1, kdy: new Date().toISOString(), delka_odhad_s: 0, smazane_vety: [...text.smazane], vracene_vety: [], smazana_slova: ven, vracena_slova: vracena, texty: {}, poznamky: {} };
+}
+
+// ---------- vzhled a zvuk (v této verzi jen přehled) ----------
+function vykresliVzhled() {
+  const el = document.getElementById('z-vzhled'); el.innerHTML = '';
+  const vz = DATA.vzhled || {};
+  el.append(h('div', { class: 'panel' }, h('h2', { text: 'Vzhled tohohle reelu' }),
+    h('div', { text: vz.vzhled ? 'Vzhled: ' + vz.vzhled + (vz.titulky_z ? ', titulky ze vzhledu ' + vz.titulky_z : '') + (vz.zoom ? ', s přiblížením' : '') : 'Vzhled zatím není vybraný.' }),
+    h('div', { class: 'napoveda', text: 'Vzhled a titulky si vybereš v knihovně stylů. Kód stylu pak napiš Claudovi. Úpravy přímo tady přijdou v další verzi.' }),
+    h('a', { href: DATA.odkaz_styly, target: '_blank', rel: 'noopener', text: 'Otevřít knihovnu stylů' })));
+}
+function vykresliZvuk() {
+  const el = document.getElementById('z-zvuk'); el.innerHTML = '';
+  el.append(h('div', { class: 'panel' }, h('h2', { text: 'Zvuk' }),
+    h('div', { class: 'napoveda', text: 'Zvukové efekty teď přidává studio samo k některým prvkům. Zapínat a vypínat je u jednotlivých scén půjde v další verzi. Když nějaký zvuk nechceš, napiš to Claudovi.' })));
+}
+
+// ---------- obecné ----------
+function vykresli() {
+  pruhNahledu(); vykresliKnihovnu();
+  if (zalozka === 'sceny') vykresliSceny();
+  if (zalozka === 'text') vykresliText();
+  if (zalozka === 'vzhled') vykresliVzhled();
+  if (zalozka === 'zvuk') vykresliZvuk();
+}
+function prepni(z) {
+  zalozka = z;
+  document.querySelectorAll('#zalozky button').forEach(b => b.classList.toggle('aktivni', b.dataset.z === z));
+  for (const n of ['sceny', 'text', 'vzhled', 'zvuk']) document.getElementById('z-' + n).hidden = n !== z;
+  vykresli();
+  if (vybranaVeta) {
+    const cil = z === 'text' ? document.getElementById('veta-' + vybranaVeta) : document.querySelector('.karta[data-veta="' + vybranaVeta + '"]');
+    if (cil) cil.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+}
+document.querySelectorAll('#zalozky button').forEach(b => b.onclick = () => prepni(b.dataset.z));
+const dlg = document.getElementById('dlg');
+function otevriDialog(...obsah) {
+  const kont = document.getElementById('dlg-obsah'); kont.innerHTML = '';
+  if (obsah.length === 1 && obsah[0].classList && obsah[0].classList.contains('dlg')) { kont.replaceWith(obsah[0]); obsah[0].id = 'dlg-obsah'; }
+  else kont.append(...obsah);
+  if (!dlg.open) dlg.showModal();
+}
+function zavriDialog() { if (dlg.open) dlg.close(); vykresli(); }
+
+async function uloz() {
+  ukazUlozeni('Ukládám…');
+  try {
+    if (zmenyPlan) {
+      const r = await fetch('/uloz-plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ otisk: otiskPlanu, radky: plan.radky, bez_vety: plan.bez_vety }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.chyba || r.status);
+      otiskPlanu = d.otisk; nahled = d.nahled; zmenyPlan = false;
+    }
+    if (zmenyText) {
+      const r = await fetch('/uloz-text', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(upravyTextu()) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.chyba || r.status);
+      nahled = d.nahled; zmenyText = false;
+    }
+    ukazUlozeni('✓ Uloženo ' + new Date().toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' }));
+    vykresli();
+    return true;
+  } catch (e) {
+    ukazUlozeni('Uložení nešlo: ' + e.message, true);
+    alert('Uložení nešlo: ' + e.message);
+    return false;
+  }
+}
+document.getElementById('ulozit').onclick = uloz;
+document.getElementById('hotovo').onclick = async () => {
+  if ((zmenyPlan || zmenyText) && !confirm('Máš neuložené změny. Uložit je a skončit?')) return;
+  if ((zmenyPlan || zmenyText) && !(await uloz())) return;
+  await fetch('/konec', { method: 'POST' });
+  document.body.innerHTML = '<p style="padding:24px;font-size:18px">Hotovo, okno můžeš zavřít. Teď napiš Claudovi „vytvoř reel“.</p>';
+};
+window.addEventListener('beforeunload', e => { if (zmenyPlan || zmenyText) { e.preventDefault(); e.returnValue = ''; } });
+video.addEventListener('error', () => { document.getElementById('video-popis').textContent = 'Video se nepodařilo načíst.'; });
+vykresli();
+</script>
+</body>
+</html>

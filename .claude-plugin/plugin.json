@@ -1,0 +1,16 @@
+{
+  "name": "reel-studio",
+  "version": "0.4.202611091145",
+  "description": "Claude Reel Studio: z natočeného mluvícího videa udělá sestříhaný reel (střih, titulky, hook), česky, všechno na tvém počítači.",
+  "author": {
+    "name": "Marcela Kamenická (Digitální Máma Marcela)"
+  },
+  "keywords": [
+    "reels",
+    "video",
+    "střih",
+    "čeština"
+  ],
+  "skills": "./skills",
+  "hooks": "./hooks/hooks.json"
+}

@@ -1,0 +1,14 @@
+Model: selfie_segmenter.tflite (MediaPipe Selfie Segmentation, obecný model 256x256)
+Autor: Google LLC (MediaPipe)
+Licence: Apache License 2.0 (OVĚŘENO podle karty modelu, 19. 10. 2026)
+Zdroj (karta modelu, licence, popis vstupu a výstupu):
+  https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MediaPipe%20Selfie%20Segmentation.pdf
+Zdroj (soubor modelu, MediaPipe Image Segmenter):
+  https://developers.google.com/edge/mediapipe/solutions/vision/image_segmenter
+  https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite
+Velikost: 249 537 B
+Staženo: 19. 10. 2026
+Plné znění licence: https://www.apache.org/licenses/LICENSE-2.0
+
+Poznámka: model se do ZIPu balíčku nebalí (pravidlo projektu). Při instalaci ho studio
+stáhne z výše uvedené adresy do složky modely/ a ověří velikost souboru.

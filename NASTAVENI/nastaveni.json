@@ -1,0 +1,34 @@
+{
+ "verze_schematu": 1,
+ "poznamka": "Nastavení zákaznice. Aktualizace studia tenhle soubor nikdy nepřepisuje (D18), nové položky jen přidá s výchozí hodnotou.",
+ "jazyk": "cs",
+ "capcut": "zdarma",
+ "vzhled": "serif",
+ "jmeno": "",
+ "handle": "",
+ "delka_reelu": {
+  "poznamka": "Předběžně podle Marcely 14. 10. 2026: mluvené a výukové reely cíl 60 až 90 s, nejvíc 120 s. Zákaznice si změní.",
+  "cil_s": 90,
+  "nejvic_s": 120,
+  "zaber_brollu_s": [
+   6,
+   7
+  ]
+ },
+ "zvuky": {
+  "hotovo": "Glass",
+  "potrebuji_te": "Funk"
+ },
+ "souhlasy": {
+  "poznamka": "null = zatím se nezeptalo. true = zákaznice souhlasila (datum v poli kdy).",
+  "mazani_nejstarsi_verze_projektu": null,
+  "kdy": null
+ },
+ "slozky": {
+  "poznamka": "Modely přepisu a dočasné soubory jsou mimo složku Reely (D3). Prázdné = výchozí umístění podle systému.",
+  "modely": "",
+  "docasne": ""
+ },
+ "editor_po_nahledu": true,
+ "poznamka_editor": "editor_po_nahledu: po každém náhledu se otevře editor přepisu (věty, slova, titulky, poznámky). false = jen když si o něj řekneš."
+}

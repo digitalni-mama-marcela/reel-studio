@@ -1,0 +1,4 @@
+{
+ "poznamka": "Stálé úpravy vzhledů zákaznice (co řekla „vždycky“). Klíče: vzhled → část (titulky, hook, mini, mini_nahore, slovo_velke, mini_silny, vsuvka, orbit, karticky…) → hodnota. Píše je krok vzdy, aktualizace studia soubor nepřepisuje.",
+ "upravy": {}
+}

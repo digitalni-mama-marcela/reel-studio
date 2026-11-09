@@ -1,0 +1,10 @@
+© 2026 Marcela Kamenická (Digitální Máma Marcela). Všechna práva vyhrazena.
+
+Kód, návody a nastavení v tomto repozitáři jsou autorským dílem Marcely Kamenické.
+Používat je smí jen zákaznice a zákazníci jejího kurzu, pro tvorbu vlastních reelů.
+Kopírování, úpravy, další šíření a prodej bez písemného souhlasu autorky nejsou dovoleny.
+
+Výjimky (cizí díla s vlastní licencí, která tato licence nemění):
+- Písma ve složce pisma/: SIL Open Font License 1.1, autoři uvedeni v souborech pisma/OFL-*.txt.
+- Obrázky emoji ve složce pisma/emoji/: Noto Emoji, Apache License 2.0 (pisma/emoji/LICENSE-NotoEmoji-Apache-2.0.txt).
+- Model modely/selfie_segmenter.tflite: Google LLC (MediaPipe), Apache License 2.0 (modely/LICENCE-selfie_segmenter.txt).

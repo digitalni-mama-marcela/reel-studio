@@ -1,0 +1,8 @@
+# Knihovny studia. Verze ověřené na iMacu M4 14. 10. 2026 (Python 3.12.15).
+faster-whisper==1.2.1
+ctranslate2==4.8.3
+av==19.0.1
+opencv-python-headless==4.11.0.86
+pillow==12.3.0
+numpy==2.5.4
+ai-edge-litert==2.3.0
