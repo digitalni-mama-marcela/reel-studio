@@ -19,7 +19,7 @@ Před každým příkazem jí jednou větou řekni, co děláš. Nic nemaž a ni
 
 1. Najdi program Claude Code (v aplikaci Claude bývá schovaný, příkaz `/plugin` v chatu aplikace nefunguje):
    - nejdřív `command -v claude` (Windows: `where claude`);
-   - Mac, když nic: `ls -d "$HOME/Library/Application Support/Claude/claude-code/"*/*/claude.app/Contents/MacOS/claude | tail -1`;
+   - Mac, když nic: `ls -dt "$HOME/Library/Application Support/Claude/claude-code/"*/*/claude.app/Contents/MacOS/claude | head -1` (ls -dt, nejnovější);
    - Windows, když nic: hledej `claude.exe` ve složce `%APPDATA%\Claude\claude-code` (nevyzkoušeno).
    Když program nenajdeš, proveď ji klikáním: Nastavení → Customize → Plugins → + Add → přidat z GitHubu
    `digitalni-mama-marcela/reel-studio` → Install. Pak pokračuj krokem 4.
