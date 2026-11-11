@@ -280,7 +280,15 @@ def krok_nahled(a):
     s["vystup"].mkdir(exist_ok=True)
     otisk_vstupu = otisk.spocitej(r, plan=False, vzhled=False)     # stav, ze kterého náhled vzniká (stránka Plán reelu)
     try:
-        m = render.vyrenderuj(osa, nast.get("vzhled", "serif"), mp4, prac, bez_textu=True, preset=a.preset)
+        if a.bez_titulku:
+            m = render.vyrenderuj(osa, nast.get("vzhled", "serif"), mp4, prac, bez_textu=True, preset=a.preset)
+        else:
+            # Marcela 10. 11. 2026: náhled po střihu má titulky (jednoduché bílé), ať zákaznice vidí text a může
+            # napsat opravu. Bez nadpisu, efektů a zvuků: ty přijdou až podle jejího výběru v knihovně stylů.
+            osa_nahled = {kk: v for kk, v in osa.items()
+                          if kk not in ("hook", "mini", "prvky", "vsuvky", "prechody", "zvuky", "titulky_polohy", "filtr_od")}
+            m = render.vyrenderuj(osa_nahled, "serif", mp4, prac, preset=a.preset)
+            k.info("Náhled má jednoduché bílé titulky, ať je vidět text. Vzhled přijde podle výběru stylu.")
     except RuntimeError as e:
         k.cervena("render se nezdařil: %s" % e, "spusť krok znovu; když to nepomůže, pošli mi PRACOVNI/nahled-%d/ffmpeg-chyby.log." % n)
         return k.kod()
@@ -927,6 +935,21 @@ def krok_styl(a):
     k = Krok("Styl", s["pracovni"])
     kod = (a.kod or "").strip()
     veta = (a.veta or "").strip()
+    if a.z_knihovny:
+        # Marcela 10. 11. 2026: výběr z knihovny stylů bez kopírování. Zákaznice klikne na „Uložit výběr pro tenhle
+        # reel“, knihovna uloží záznam pro-reel ({kod, ulozeno, ...}), Claude ho stáhne do souboru a předá sem.
+        try:
+            zaznam = json.loads(Path(a.z_knihovny).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            k.cervena("uložený výběr nejde přečíst (%s)." % e, "požádej zákaznici, ať v knihovně stylů klikne znovu na Uložit výběr pro tenhle reel.")
+            return k.kod()
+        if isinstance(zaznam, dict) and isinstance(zaznam.get("data"), dict):
+            zaznam = zaznam["data"]
+        kod = str((zaznam or {}).get("kod") or "").strip() if isinstance(zaznam, dict) else ""
+        if not kod:
+            k.cervena("v uloženém výběru chybí kód stylu.", "požádej zákaznici, ať v knihovně stylů klikne na Uložit výběr pro tenhle reel.")
+            return k.kod()
+        k.info("Výběr z knihovny stylů, uložený %s." % (zaznam.get("ulozeno") or "bez času"))
     if not kod and not veta:
         posledni = _styl.nacti_posledni(r)
         if posledni.get("kod"):
@@ -1398,6 +1421,7 @@ def main(argv=None):
     nh.add_argument("--editor", action="store_true", help="hned po náhledu otevřít editor přepisu")
     nh.add_argument("--bez-editoru", action="store_true", help="neotvírat editor, i když to má nastavení zapnuté")
     nh.add_argument("--cele", action="store_true", help="bez střihu: celé video tak, jak je natočené (žádné pauzy ani věty pryč)")
+    nh.add_argument("--bez-titulku", action="store_true", help="náhled bez titulků (rychlejší, jako dřív)")
     nh.set_defaults(f=krok_nahled)
     vz = sub.add_parser("vzhled", help="hotový reel s hookem, titulky a vsuvkami z poslední časové osy")
     vz.add_argument("--reel", required=True)
@@ -1421,6 +1445,7 @@ def main(argv=None):
     sy.add_argument("--kod", help="věta z knihovny stylů (Zkopírovat kód); bez --kod i --veta se vezme poslední styl z NASTAVENI/styl.json")
     sy.add_argument("--veta", help="obyčejná věta: písmo větší, písmo červeně, dej červené pozadí, titulky po slovech, titulky nahoru, hook nahoru ale jemně, zachovej moje písmo, bez zvuků, hlasitěji")
     sy.add_argument("--vzdy", action="store_true", help="větu zapsat i trvale („vždycky“) do NASTAVENI")
+    sy.add_argument("--z-knihovny", help="soubor JSON s uloženým výběrem z knihovny stylů (záznam pro-reel s polem kod)")
     sy.set_defaults(f=krok_styl)
     vd.set_defaults(f=krok_vzdy)
     br = sub.add_parser("broll", help="b-roll: video bez řeči s nadpisem přes obraz (zvuk původní ztišený, hudbu přidá zákaznice v Instagramu)")
