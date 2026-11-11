@@ -27,6 +27,11 @@ v Dokumentech, v iCloudu ani v OneDrive.
 2. **Video.** Zeptej se: „Kde máš natočené video? Přetáhni ho sem, nebo mi napiš, kde je.“ Pak:
    `start.py kopie --reel "<složka>" "<cesta k videu>" ["<druhé video>"]`
    Originál zůstane na místě. Když je soubor jen v iCloudu, krok ti řekne, co má zákaznice kliknout.
+   Pak se jednou zeptej: „Chceš v reelu i svoje screenshoty nebo fotky? Dej je do složky PODKLADY-SEM v tomhle
+   reelu, otevřu ti ji. Když má obrázek patřit k určité větě, stačí mi to napsat.“ Složku otevři (Mac `open`,
+   Windows `explorer`). Obrázky (PNG, JPG, WEBP) pak vezme krok 8 (`plan --podklady`). Vložit do reelu cizí
+   video jako záběr studio zatím neumí: další videa v PODKLADY-SEM bere jako pokračování jejího mluvení.
+   Řekni jí to, když chce přidat video.
 3. **Kontrola videa:** `start.py kontrola-videa --reel "<složka>"`. Když je video HDR, krok řekne, co udělat
    v iPhonu. Předej to zákaznici doslova.
 4. **Přepis:** `start.py prepis --reel "<složka>"` (trvá asi půl délky videa). Pak si přečti jen soubor
@@ -87,6 +92,7 @@ v Dokumentech, v iCloudu ani v OneDrive.
 ## Výběr z knihovny stylů
 Zákaznice si vybírá vzhled v knihovně stylů „Vyber si svůj styl“ (https://claude.ai/artifact/7waF2A4cLZ6AqDNKisjyzN).
 Tlačítko „Uložit výběr pro tenhle reel“ uloží její výběr do knihovny (záznam jen pro ni). Kód nekopíruje.
+Obrázky se v knihovně nenahrávají (od 11. 11. 2026), patří do PODKLADY-SEM.
 - Když napíše „uloženo“, stáhni záznam nástrojem ArtifactData (načti ho přes ToolSearch, když není načtený):
   akce `get`, `url` knihovny, `collection` `data/users/me`, `doc_id` `pro-reel`, `out_dir` `<složka>/PRACOVNI/knihovna`.
   Pak spusť `start.py styl --reel "<složka>" --z-knihovny "<složka>/PRACOVNI/knihovna/data/users/me/pro-reel.json"`.
