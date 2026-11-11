@@ -30,9 +30,19 @@ v Dokumentech, v iCloudu ani v OneDrive.
 3. **Kontrola videa:** `start.py kontrola-videa --reel "<složka>"`. Když je video HDR, krok řekne, co udělat
    v iPhonu. Předej to zákaznici doslova.
 4. **Přepis:** `start.py prepis --reel "<složka>"` (trvá asi půl délky videa). Pak si přečti jen soubor
-   `PRACOVNI/klip-*/prepis-vety.txt`: věty s čísly. Pod větou může být ⚠️ s hlídaným nebo nejistým slovem:
-   zeptej se zákaznice na správné znění jen u těch a oprav je v editoru. Vulgární slovo nikdy nenech
-   v titulcích bez jejího potvrzení.
+   `PRACOVNI/klip-*/prepis-vety.txt`: věty s čísly.
+4b. **Chyby přepisu oprav sama, před náhledem** (Marcela 11. 11. 2026: titulky mají být správně hned).
+   Projdi každou větu a oprav chyby rozpoznání: jména a značky („Cloud“ → „Claude“, když mluví o Claudovi),
+   slova, která česky nejsou („týděn“ → „týden“), zjevně špatně slyšené tvary („veřejním“ → „veřejném“)
+   a slova spojená nebo rozdělená omylem („po každý“ → „pokaždé“). Celou opravenou větu pošli najednou:
+   `start.py oprava-titulku --reel "<složka>" --oprava "k1-v03=celý opravený text věty" [--oprava …]`.
+   Mění se jen titulky, video se nestříhá. Neměň, co opravdu řekla: hovorová slova („dneska“, „jakože“),
+   slovosled ani její styl. Nejsi korektorka její řeči, jen opravuješ chyby přepisu.
+   Dvojice, které budou chybné vždycky (jedno slovo, bez ohledu na smysl), si studio zapamatuje: přidej
+   `--naucit "týděn=týden"`. „Cloud=Claude“ takhle neukládej, protože „cloud“ je i běžné slovo.
+   Pak zákaznici řekni jednou větou, co jsi opravila („Opravila jsem v titulcích Cloud na Claude a týděn na týden.“).
+   Neptej se. Ptej se jen tam, kde nevíš, co řekla, nebo kde je ⚠️ s hlídaným slovem.
+   Vulgární slovo nikdy nenech v titulcích bez jejího potvrzení.
 5. **Návrh střihu:** `start.py navrh --reel "<složka>"`. Krok vypíše zdvojené věty a návrh. Přečti zákaznici
    jen to, co se navrhuje vyhodit, jednou větou, a zeptej se: „Souhlasíš, nebo něco vrátit?“
 6. **Náhled:** `start.py nahled --reel "<složka>"` (asi minuta na minutu reelu). Náhled má jednoduché bílé titulky,

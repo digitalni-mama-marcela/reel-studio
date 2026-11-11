@@ -8,6 +8,7 @@
   nahled          hrubý střih jako MP4 k náhledu (bez textu) a kontrola souboru
   editor          editor přepisu v prohlížeči, uloží PRACOVNI/upravy.json
   plan-reelu      stránka Plán reelu: scény jako karty, vlastní média, věty s prvky
+  oprava-titulku  Claude opraví chyby přepisu v titulcích před náhledem (video se nestříhá)
   styl            kód stylu z knihovny stylů nebo věta zákaznice (písmo větší…), zapíše PRACOVNI/styl.json a vzhled.json
   stav            co je hotové
 
@@ -925,6 +926,63 @@ def krok_vzdy(a):
     return k.kod()
 
 
+def krok_oprava_titulku(a):
+    """Marcela 11. 11. 2026: chyby přepisu („Cloud“ místo „Claude“, „týděn“) opraví Claude sám ještě před náhledem.
+    Mění jen text titulků, video se nestříhá. S --naucit si studio dvojici zapamatuje pro další reely
+    (NASTAVENI/opravy-slov-cs.json zákaznice)."""
+    r = _reel(a.reel)
+    s = projekt.slozky(r)
+    k = Krok("Oprava titulků", s["pracovni"])
+    klipy = projekt.nacti_klipy(r)
+    if not klipy:
+        k.cervena("chybí přepis.", "nejdřív spusť přepis.")
+        return k.kod()
+    vety = {v["id"]: v for kl in klipy for v in kl["vety"]}
+    vyber, vynechat, texty = projekt.aktualni_vyber(r, klipy)
+    texty = dict(texty)
+    zaznam = []
+    for o in a.oprava or []:
+        vid, _, novy = o.partition("=")
+        vid, novy = vid.strip(), " ".join(novy.split())
+        if vid not in vety or not novy:
+            k.cervena("neznám větu „%s“ nebo chybí nový text." % vid, "použij tvar k1-v03=celý opravený text věty (čísla z prepis-vety.txt).")
+            return k.kod()
+        bylo = " ".join(w["w"] for w in vety[vid]["slova"])
+        cist = lambda t: [w.strip(".,;:!?\"'()[]„“”…-–—").lower() for w in t.split()]
+        if len(novy.split()) < len(bylo.split()) and all(w in cist(bylo) for w in cist(novy)):
+            k.cervena("věta %s by jen ztratila slova. Oprava titulků nic nestříhá." % vid,
+                      "slova k vystřižení jdou přes editor nebo nahled --vynechat.")
+            return k.kod()
+        if novy != bylo:
+            texty[vid] = novy
+            zaznam.append({"veta": vid, "bylo": bylo, "je": novy})
+            k.info("%s: „%s“ → „%s“" % (vid, bylo, novy))
+    nauceno = []
+    if a.naucit:
+        slozka = Path(r).parent / "NASTAVENI"
+        slozka.mkdir(exist_ok=True)
+        soubor = slozka / "opravy-slov-cs.json"
+        data = projekt.nacti_json(soubor) or {"jazyk": "cs", "verze": 1, "opravy": {}}
+        data.setdefault("opravy", {})
+        for dv in a.naucit:
+            spatne, _, dobre = dv.partition("=")
+            spatne, dobre = spatne.strip(), dobre.strip()
+            if not spatne or not dobre or " " in spatne:
+                k.cervena("„%s“ není dvojice jedno_slovo=oprava." % dv, "použij tvar týděn=týden.")
+                return k.kod()
+            data["opravy"][spatne.lower()] = dobre
+            nauceno.append("%s → %s" % (spatne, dobre))
+        projekt.uloz_json(soubor, data)
+    projekt.uloz_vyber(r, vyber, vynechat, texty)
+    hist = projekt.nacti_json(s["pracovni"] / "opravy-claude.json") or []
+    hist.append({"cas": time.strftime("%Y-%m-%d %H:%M"), "opravy": zaznam, "nauceno": nauceno})
+    projekt.uloz_json(s["pracovni"] / "opravy-claude.json", hist)
+    k.zelena("opraveno vět %d%s. Video se nestříhá, mění se jen titulky." % (
+        len(zaznam), (", zapamatováno pro další reely: " + ", ".join(nauceno)) if nauceno else ""),
+        "náhled: python -m studio nahled --reel \"%s\"." % r)
+    return k.kod()
+
+
 def krok_styl(a):
     """Kód stylu z knihovny stylů („styl: vogue; nadpisy: …“) nebo obyčejná věta zákaznice („písmo větší“).
     Nic nerenderuje: zapíše PRACOVNI/styl.json, NASTAVENI/styl.json a PRACOVNI/vzhled.json (vzhled + úpravy jen pro
@@ -1440,6 +1498,11 @@ def main(argv=None):
     vd.add_argument("--reel", required=True)
     vd.add_argument("--nastav", action="append", help="vzhled.cast.klic=hodnota, třeba vogue.mini_nahore.velikost=109; lze víckrát")
     vd.add_argument("--poznamka", help="věta zákaznice, zapíše se do NASTAVENI/poznamky-zakaznice.md")
+    ot = sub.add_parser("oprava-titulku", help="Claude opraví chyby přepisu v titulcích (video se nestříhá)")
+    ot.add_argument("--reel", required=True)
+    ot.add_argument("--oprava", action="append", help="k1-v03=celý opravený text věty; lze víckrát")
+    ot.add_argument("--naucit", action="append", help="špatně=správně (jedno slovo), studio si to zapamatuje pro další reely")
+    ot.set_defaults(f=krok_oprava_titulku)
     sy = sub.add_parser("styl", help="kód stylu z knihovny stylů („styl: vogue; nadpisy: …“) nebo věta zákaznice („písmo větší“)")
     sy.add_argument("--reel", required=True)
     sy.add_argument("--kod", help="věta z knihovny stylů (Zkopírovat kód); bez --kod i --veta se vezme poslední styl z NASTAVENI/styl.json")

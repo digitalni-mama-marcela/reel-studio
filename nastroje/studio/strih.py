@@ -704,6 +704,15 @@ def pouzij_texty(klipy, texty):
                             v["slova"][i]["w"] = nove_slova[n] if n < len(nove_slova) else ""
                         else:
                             v["slova"][i]["w"] = " ".join(nove_slova[n:])
+                    if op == "replace" and nove_slova:
+                        # přepsaná slova se sloučí („po každý“ → „pokaždé“), nevystřihnou: čas prázdného slova
+                        # dostane poslední neprázdné slovo téže změny, zvuk zůstává celý (Marcela 11. 11. 2026)
+                        posledni = None
+                        for i in cile:
+                            if v["slova"][i]["w"]:
+                                posledni = v["slova"][i]
+                            elif posledni is not None:
+                                posledni["end"] = max(posledni["end"], v["slova"][i]["end"])
                 v["slova"] = [w for w in v["slova"] if w["w"]]
             v["text"] = " ".join(w["w"] for w in v["slova"])
     return rozdilne
