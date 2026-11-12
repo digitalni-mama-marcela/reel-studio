@@ -177,7 +177,8 @@ def sestav(data, obrazky=None):
     if data.get("pauzy"):
         pauzy = '<div class="legenda">Dlouhé pauzy, které se zkrátí samy: %s</div>' % e(", ".join(
             "%.1f s mezi %s a %s" % (p["pauza_s"], p["po_vete"], p["pred_vetou"]) for p in data["pauzy"]))
-    ted = datetime.now().strftime("%-d. %-m. %Y %H:%M:%S")
+    _t = datetime.now()     # ne strftime("%-d"): Windows ho nezná
+    ted = "%d. %d. %d %s" % (_t.day, _t.month, _t.year, _t.strftime("%H:%M:%S"))
     return """<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="3"><title>Průběh střihu: %s</title><style>%s</style></head><body><main>
 <h1>%s</h1><div class="pod">Přehled průběhu střihu. Obnovuje se sám každé 3 sekundy. Naposledy %s. Složka: %s</div>

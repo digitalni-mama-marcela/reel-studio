@@ -8,13 +8,17 @@ Výstup do složky PRACOVNI:
   prepis-vety.txt    věty s číslem a časem (čte Claude, šetří limity)
 """
 import json
-import resource
 import subprocess
 import time
 import wave
 from pathlib import Path
 
 import numpy as np
+
+try:
+    import resource          # jen Mac a Linux; Windows ho nemá (měření paměti tam vynecháme)
+except ImportError:
+    resource = None
 
 VYCHOZI_MODEL = "turbo"  # large-v3 je kvalitnější na jména, ale asi 3x pomalejší (T1, 14. 10. 2026)
 
@@ -62,7 +66,7 @@ def prepis_klipu(klip, vystup, model_nazev=VYCHOZI_MODEL, predpona="v", jazyk="c
                "cas_nacteni_modelu_s": round(cas_nacteni, 1), "cas_prepisu_s": round(cas_prepis, 1),
                "nasobek_realneho_casu": round(cas_prepis / delka, 3) if delka else None,
                "pocet_vet": len(vety), "pocet_slov": sum(len(v["slova"]) for v in vety),
-               "nejvyssi_pamet_mb": round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2),
+               "nejvyssi_pamet_mb": round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2) if resource else None,
                "jazyk": info.language, "jistota_jazyka": round(info.language_probability, 3)}
     (vystup / "prepis.json").write_text(json.dumps({"metriky": metriky, "vety": vety}, ensure_ascii=False, indent=1),
                                         encoding="utf-8")

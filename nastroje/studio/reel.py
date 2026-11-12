@@ -61,10 +61,15 @@ def zaloz_reel(koren, nazev, kdy=None):
     return cil
 
 
+def _cesky_cas(t):
+    """12. 11. 2026 10:05. Ne strftime("%-d"): to Windows nezná (ValueError, OVĚŘENO v GitHub Actions 12. 11. 2026)."""
+    return "%d. %d. %d %s" % (t.day, t.month, t.year, t.strftime("%H:%M"))
+
+
 def pripis_do_seznamu(koren, slozka, nazev, stav):
     """Jeden řádek na reel v SEZNAM.md. Řádek stejné složky se nahradí, nic jiného se nemění."""
     soubor = Path(koren) / "SEZNAM.md"
-    radek = "| %s | %s | %s | %s |" % (slozka, nazev, stav, datetime.now().strftime("%-d. %-m. %Y %H:%M"))
+    radek = "| %s | %s | %s | %s |" % (slozka, nazev, stav, _cesky_cas(datetime.now()))
     if soubor.exists():
         radky = soubor.read_text(encoding="utf-8").splitlines()
     else:
