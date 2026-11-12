@@ -3,6 +3,8 @@
 Strom (Notion 01):
   Reely/2026-10-14_nazev-reelu/
       PODKLADY-SEM/   video, screenshoty (sem zákaznice nahrává, studio sem kopíruje originál)
+          NAHRAVKY-OBRAZOVKY/  nahrávky obrazovky (telefon, počítač): do reelu jdou jako video v rámečku,
+                               ne jako její mluvení
       VYSTUP/         MP4, projekt pro CapCut, obálka
       PRACOVNI/       přepis, časová osa, stav.json (zákaznice nemusí otevírat)
 Názvy složek jsou bez diakritiky a bez mezer, název reelu s diakritikou zůstává ve stav.json a v SEZNAM.md.
@@ -17,6 +19,8 @@ from .hlaseni import VERZE_STUDIA
 
 PODSLOZKY = ("PODKLADY-SEM", "VYSTUP", "PRACOVNI")
 VIDEO_PRIPONY = {".mp4", ".mov", ".m4v", ".mts", ".avi", ".mkv", ".webm", ".3gp"}
+NAHRAVKY = "NAHRAVKY-OBRAZOVKY"          # podsložka PODKLADY-SEM; videa v ní nejsou klipy jejího mluvení
+NAHRAVKY_PRIPONY = {".mp4", ".mov"}      # co umí vložka (prvky/vlozka.py)
 
 
 def slug(nazev, max_delka=40):
@@ -44,11 +48,14 @@ def zaloz_reel(koren, nazev, kdy=None):
         n += 1
     for p in PODSLOZKY:
         (cil / p).mkdir(parents=True)
+    (cil / "PODKLADY-SEM" / NAHRAVKY).mkdir()
     stav = {"verze_studia": VERZE_STUDIA, "nazev": nazev, "slozka": cil.name,
             "zalozeno": datetime.now().isoformat(timespec="seconds"), "kroky": {}, "poradi": []}
     (cil / "PRACOVNI" / "stav.json").write_text(json.dumps(stav, ensure_ascii=False, indent=1), encoding="utf-8")
     (cil / "PODKLADY-SEM" / "SEM-NAHRAJ-VIDEO.txt").write_text(
         "Sem nahraj natočené video (jedno nebo dvě se stejným obsahem) a případné screenshoty.\n"
+        "Nahrávky obrazovky (z telefonu nebo počítače) dej do složky NAHRAVKY-OBRAZOVKY.\n"
+        "Studio je vloží do reelu jako video v rámečku.\n"
         "Originál zůstane tam, kde je. Studio si ho jen zkopíruje.\n", encoding="utf-8")
     pripis_do_seznamu(koren, cil.name, nazev, "založeno")
     return cil
@@ -85,6 +92,15 @@ def najdi_videa(slozka):
     if not slozka.is_dir():
         return []
     return sorted((p for p in slozka.iterdir() if je_video(p)), key=lambda p: p.name.lower())
+
+
+def najdi_nahravky(podklady):
+    """Nahrávky obrazovky v PODKLADY-SEM/NAHRAVKY-OBRAZOVKY (MP4, MOV), podle názvu. Vrátí cesty."""
+    slozka = Path(podklady) / NAHRAVKY
+    if not slozka.is_dir():
+        return []
+    return sorted((p for p in slozka.iterdir() if p.is_file() and not p.name.startswith(".")
+                   and p.suffix.lower() in NAHRAVKY_PRIPONY), key=lambda p: p.name.lower())
 
 
 def zastupne_icloud(slozka):

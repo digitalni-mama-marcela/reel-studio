@@ -181,7 +181,10 @@ def sestav_plan(vety, nadpisy=None, wow=None, obrazky=None):
                 duvod += "; nadpis zákaznice jako štítek pod obrázkem"
         elif typ == "vlozka":
             if obrazky:
-                prvek, obsah, duvod = "vlozka", obrazky.pop(0), "věta ukazuje věc na obrazovce, screenshot z podkladů"
+                obsah = obrazky.pop(0)
+                prvek, duvod = "vlozka", ("věta ukazuje věc na obrazovce, nahrávka obrazovky z podkladů"
+                                          if obsah.lower().endswith((".mp4", ".mov")) else
+                                          "věta ukazuje věc na obrazovce, screenshot z podkladů")
             else:
                 prvek, obsah, duvod = "chybi_obrazek", "", "věta by chtěla screenshot, v podkladech žádný není (záložní: jen přiblížení)"
         elif typ == "mrizka":

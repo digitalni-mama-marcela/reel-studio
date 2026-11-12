@@ -52,8 +52,11 @@ jobs:
       - name: 1 Kontrola pocitace (stahne uv a Python)
         run: |
           mkdir -p "$REELY"
-          $STUDIO kontrola --slozka "$REELY" | tee kontrola.txt
-          grep -q "STATUS uv OK\|uv " kontrola.txt
+          # testovací počítač nemá CapCut ani písma, kontrola to nahlásí červeně: tady se hlídá jen spouštěč
+          $STUDIO kontrola --slozka "$REELY" | tee kontrola.txt || true
+          grep -q "STATUS uv OK" kontrola.txt
+          grep -q "STATUS python OK" kontrola.txt
+          grep -q "Diakritika se uloží i přečte správně" kontrola.txt
 
       - name: 2 Priprava (knihovny a ffmpeg)
         run: |
@@ -81,7 +84,7 @@ jobs:
 
       - name: 5 Zkusebni video s mluvenym slovem
         run: |
-          FF=$($STUDIO kde | grep '^ffmpeg:' | cut -d' ' -f2-)
+          FF=$($STUDIO kde | grep '^ffmpeg:' | cut -d' ' -f2- | tr -d '\r')
           TEXT="Ahoj, tohle je zkouška studia. Natáčím krátké video na Instagram. Děkuju, že se díváš."
           if [ "$RUNNER_OS" = Windows ]; then
             powershell -NoProfile -Command "Add-Type -AssemblyName System.Speech; \$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; \$s.SetOutputToWaveFile('$RUNNER_TEMP\\hlas.wav'); \$s.Speak('$TEXT'); \$s.Dispose()"
@@ -96,11 +99,17 @@ jobs:
 
       - name: 6 Cely reel
         run: |
+          FF=$($STUDIO kde | grep '^ffmpeg:' | cut -d' ' -f2- | tr -d '\r')
           $STUDIO zaloz --reely "$REELY" --nazev "Zkouška Windows" | tee zaloz.txt
           R=$(tail -1 zaloz.txt | tr -d '\r')
           $STUDIO kopie --reel "$R" "$VIDEO"
+          # nahrávka obrazovky: jde do NAHRAVKY-OBRAZOVKY a nesmí se přepisovat jako mluvení
+          "$FF" -y -v error -f lavfi -i "testsrc2=size=1170x2532:rate=60" -t 4 -c:v libx264 -pix_fmt yuv420p "$RUNNER_TEMP/Nahrávka obrazovky.mov"
+          $STUDIO kopie --reel "$R" --nahravka "$RUNNER_TEMP/Nahrávka obrazovky.mov"
+          ls "$R/PODKLADY-SEM/NAHRAVKY-OBRAZOVKY/Nahrávka obrazovky.mov"
           $STUDIO kontrola-videa --reel "$R"
           $STUDIO prepis --reel "$R"
+          if [ -d "$R/PRACOVNI/klip-2" ]; then echo "nahravka obrazovky se brala jako mluveni"; exit 1; fi
           $STUDIO navrh --reel "$R"
           $STUDIO nahled --reel "$R" --bez-editoru
           $STUDIO plan --reel "$R"

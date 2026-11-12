@@ -38,11 +38,15 @@ v Dokumentech, v iCloudu ani v OneDrive.
 2. **Video.** Zeptej se: „Kde máš natočené video? Přetáhni ho sem, nebo mi napiš, kde je.“ Pak:
    `start.py kopie --reel "<složka>" "<cesta k videu>" ["<druhé video>"]`
    Originál zůstane na místě. Když je soubor jen v iCloudu, krok ti řekne, co má zákaznice kliknout.
-   Pak se jednou zeptej: „Chceš v reelu i svoje screenshoty nebo fotky? Dej je do složky PODKLADY-SEM v tomhle
-   reelu, otevřu ti ji. Když má obrázek patřit k určité větě, stačí mi to napsat.“ Složku otevři (Mac `open`,
-   Windows `explorer`). Obrázky (PNG, JPG, WEBP) pak vezme krok 8 (`plan --podklady`). Vložit do reelu cizí
-   video jako záběr studio zatím neumí: další videa v PODKLADY-SEM bere jako pokračování jejího mluvení.
-   Řekni jí to, když chce přidat video.
+   Pak se jednou zeptej: „Chceš v reelu i svoje screenshoty, fotky nebo nahrávku obrazovky? Screenshoty a fotky
+   dej do složky PODKLADY-SEM v tomhle reelu, nahrávky obrazovky do složky NAHRAVKY-OBRAZOVKY uvnitř. Otevřu ti
+   ji. Když má něco patřit k určité větě, stačí mi to napsat.“ Složku otevři (Mac `open`, Windows `explorer`).
+   Obrázky (PNG, JPG, WEBP) a nahrávky (MP4, MOV) pak vezme krok 8 (`plan`) a dá je do rámečku nahoře.
+   Když ti nahrávku obrazovky přetáhne do chatu nebo napíše, kde je, zkopíruj ji ty (originál zůstane):
+   `start.py kopie --reel "<složka>" --nahravka "<cesta k nahrávce>"`
+   Nahrávka hraje bez zvuku od začátku, nejvýš 8 s, pak drží poslední snímek. Řekni jí: „Nahrávku si zkrať
+   na tu část, kterou chceš ukázat (iPhone: Upravit, Mac: QuickTime Oříznout, Windows: Fotky nebo Clipchamp).“
+   Videa přímo v PODKLADY-SEM (mimo NAHRAVKY-OBRAZOVKY) studio bere jako pokračování jejího mluvení.
 3. **Kontrola videa:** `start.py kontrola-videa --reel "<složka>"`. Když je video HDR, krok řekne, co udělat
    v iPhonu. Předej to zákaznici doslova.
 4. **Přepis:** `start.py prepis --reel "<složka>"` (trvá asi půl délky videa). Když se model přepisu ještě

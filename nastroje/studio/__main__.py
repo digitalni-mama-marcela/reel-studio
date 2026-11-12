@@ -75,6 +75,8 @@ def krok_zaloz(a):
 def krok_kopie(a):
     r = _reel(a.reel)
     s = projekt.slozky(r)
+    if getattr(a, "nahravka", False):
+        return _kopie_nahravek(a, r, s)
     k = Krok("Kopie videa", s["pracovni"])
     zdroje = [Path(v).expanduser() for v in a.video] if a.video else reel.najdi_videa(s["podklady"])
     icloud = reel.zastupne_icloud(s["podklady"])
@@ -101,6 +103,36 @@ def krok_kopie(a):
                  "kontrola videa (STUDIO kontrola-videa --reel \"%s\")." % r, {"videa": [h["cil"] for h in hotove]})
     reel.pripis_do_seznamu(s["reely"], r.name, projekt.nazev_reelu(r), "video zkopírováno")
     _prubeh(r)
+    return k.kod()
+
+
+def _kopie_nahravek(a, r, s):
+    """Nahrávky obrazovky do PODKLADY-SEM/NAHRAVKY-OBRAZOVKY. Nejsou to klipy jejího mluvení: nepřepisují se,
+    plán je dá do vložky (video v rámečku). Originál zůstává na místě."""
+    k = Krok("Kopie nahrávky obrazovky", s["pracovni"])
+    cil = s["podklady"] / reel.NAHRAVKY
+    if not a.video:
+        k.cervena("nevím, kterou nahrávku zkopírovat.", "zadej cestu k nahrávce obrazovky (MP4 nebo MOV).")
+        return k.kod()
+    hotove, chyby = [], []
+    for z in [Path(v).expanduser() for v in a.video]:
+        if z.suffix.lower() not in reel.NAHRAVKY_PRIPONY:
+            chyby.append({"zprava": "%s: nahrávku obrazovky umí studio jen jako MP4 nebo MOV." % z.name,
+                          "udelej": "Ulož nahrávku jako MP4 nebo MOV (iPhone, Mac i Windows to dělají samy)."})
+            continue
+        v = kopie.zkopiruj(z, cil, s["pracovni"] / "kopie-nahravek.json")
+        (hotove if v["ok"] else chyby).append(v)
+        if v["ok"]:
+            k.info(v["zprava"].replace("Video ", "Nahrávka ", 1))
+    if chyby:
+        k.cervena("%d z %d nahrávek se nepodařilo zkopírovat: %s" % (len(chyby), len(a.video), " ".join(c["zprava"] for c in chyby)),
+                  " ".join(c["udelej"] for c in chyby if c.get("udelej")))
+    else:
+        k.zelena("Nahrávky obrazovky jsou ve složce %s/%s: %s. Plán reelu je dá do rámečku k větám o obrazovce "
+                 "(z každé nahrávky nejvýš 8 s od začátku)." % (s["podklady"].name, reel.NAHRAVKY,
+                                                                ", ".join(Path(h["cil"]).name for h in hotove)),
+                 "plán obrazovky (STUDIO plan --reel \"%s\"), když už je náhled." % r,
+                 {"nahravky": [h["cil"] for h in hotove]})
     return k.kod()
 
 
@@ -568,7 +600,9 @@ def krok_vzhled(a):
                 # obsah: „soubor | štítek | vyrez=stred“ (štítek i výřez nepovinné; výřez nahore / stred / dole)
                 dily = [x.strip() for x in obsah.split("|")]
                 soubor, zbytek = dily[0], dily[1:]
-                pv = {"typ": "vlozka", "od": round(od_v, 2), "do": round(min(max(do_v + 0.4, od_v + 2.5), od_v + 5.0), 2),
+                # nahrávka obrazovky smí zůstat déle (vložka z videa bere nejvýš 8 s), obrázek nejvýš 5 s
+                nejdel = 8.0 if soubor.lower().endswith((".mp4", ".mov")) else 5.0
+                pv = {"typ": "vlozka", "od": round(od_v, 2), "do": round(min(max(do_v + 0.4, od_v + 2.5), od_v + nejdel), 2),
                       "soubor": soubor, "efekt": "pop"}
                 for d_ in zbytek:
                     if d_.lower().startswith("vyrez="):
@@ -1318,6 +1352,8 @@ def krok_plan(a):
     podklady = _podklady_reelu(r, a)
     nadpisy, wow = planer.nacti_mikro_nadpisy(podklady / "mikro-nadpisy.txt")
     obrazky = sorted(p.name for p in podklady.glob("*") if p.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp")) if podklady.exists() else []
+    # nahrávky obrazovky první: ukazují věc na obrazovce líp než screenshot (planer je bere v tomhle pořadí)
+    obrazky = [p.name for p in reel.najdi_nahravky(podklady)] + obrazky
     radky = planer.sestav_plan(vety, nadpisy, wow, obrazky)
     if a.vzor:
         vz_cesta = s["reely"] / "VZORY" / (a.vzor + ".json")
@@ -1456,6 +1492,8 @@ def main(argv=None):
     c = sub.add_parser("kopie", help="zkopírovat video do složky reelu")
     c.add_argument("--reel", required=True)
     c.add_argument("video", nargs="*", help="cesty k videím (když nic, vezmou se videa už v PODKLADY-SEM)")
+    c.add_argument("--nahravka", action="store_true",
+                   help="videa jsou nahrávky obrazovky: do PODKLADY-SEM/NAHRAVKY-OBRAZOVKY, do reelu jako video v rámečku")
     c.set_defaults(f=krok_kopie)
     kv = sub.add_parser("kontrola-videa", help="formát, otočení, snímkování, HDR, zvuk")
     kv.add_argument("--reel", required=True)

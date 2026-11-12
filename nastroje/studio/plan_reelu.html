@@ -31,6 +31,8 @@
   .knihovna { display:grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap:8px; margin-top:10px; }
   .medium { border:1px solid var(--ramecek); border-radius:8px; overflow:hidden; background:#f4efe8; cursor:pointer; text-align:left; padding:0; }
   .medium img { width:100%; aspect-ratio:1; object-fit:contain; display:block; background:#efe8df; }
+  .medium { position:relative; }
+  .medium .hraj { position:absolute; top:4px; left:4px; background:#2b2522; color:#faf7f2; font-size:11px; padding:1px 6px; border-radius:10px; }
   .medium span { display:block; font-size:12px; padding:3px 5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .medium.pouzity span::before { content:"● "; color:var(--zelena); }
   .zalozky { display:flex; gap:4px; border-bottom:1px solid var(--ramecek); margin-bottom:12px; flex-wrap:wrap; }
@@ -119,8 +121,8 @@
       <h2>Moje média</h2>
       <div class="napoveda">Tvoje fotky, screenshoty a logo. Studio do videa dá jen to, co sem nahraješ. Nic si nevymýšlí.</div>
       <button class="pridat" id="pridat">+ Přidat fotku, screenshot nebo logo</button>
-      <input type="file" id="soubor" accept="image/png,image/jpeg,image/webp" multiple hidden>
-      <input type="file" id="soubor-vymena" accept="image/png,image/jpeg,image/webp" hidden>
+      <input type="file" id="soubor" accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,.mov" multiple hidden>
+      <input type="file" id="soubor-vymena" accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,.mov" hidden>
       <div class="knihovna" id="knihovna"></div>
     </div>
   </aside>
@@ -173,7 +175,7 @@ function obrazkyRadku(r) {
   const out = [];
   for (const kus of String(r.obsah || '').replace(/\|/g, '\n').replace(/ \/ /g, '\n').split('\n')) {
     const k = kus.trim();
-    if (/\.(png|jpe?g|webp)$/i.test(k)) out.push({ text: k, klic: odkazy[k] || odkazy[k.split('/').pop()] || null });
+    if (/\.(png|jpe?g|webp|mp4|mov)$/i.test(k)) out.push({ text: k, klic: odkazy[k] || odkazy[k.split('/').pop()] || null });
   }
   return out;
 }
@@ -222,7 +224,7 @@ function vykresliKnihovnu() {
   for (const m of vlastni) {
     const pouzity = pouziti(m.klic).length > 0;
     k.append(h('button', { class: 'medium' + (pouzity ? ' pouzity' : ''), title: m.jmeno + (pouzity ? ' (ve videu)' : ''), on: { click: () => dialogMedia(m) } },
-      h('img', { src: m.url, alt: m.jmeno, loading: 'lazy' }), h('span', { text: m.jmeno })));
+      h('img', { src: m.url, alt: m.jmeno, loading: 'lazy' }), m.video ? h('b', { class: 'hraj', text: '▶ video' }) : null, h('span', { text: m.jmeno })));
   }
 }
 async function nahraj(soubory) {
@@ -471,14 +473,14 @@ function vyberObrazku(kopie, vice, poVyberu) {
   const mrizka = h('div', { class: 'vyber-obr' });
   const kresli = () => {
     mrizka.innerHTML = '';
-    for (const m of media.filter(x => x.knihovna || zvolene.has(x.jmeno) || [...zvolene].some(t => odkazy[t] === x.klic))) {
+    for (const m of media.filter(x => (x.knihovna || zvolene.has(x.jmeno) || [...zvolene].some(t => odkazy[t] === x.klic)) && !(vice && x.video))) {
       const text = [...zvolene].find(t => odkazy[t] === m.klic) || m.jmeno;
       const je = zvolene.has(text);
       mrizka.append(h('button', { class: 'medium' + (je ? ' zvoleny' : ''), type: 'button', title: m.jmeno, on: { click: () => {
         if (vice) { if (je) zvolene.delete(text); else zvolene.add(text); kopie.obsah = [...zvolene].join(' / '); }
         else { const d = String(kopie.obsah || '').split('|'); kopie.obsah = m.jmeno + d.slice(1).map(x => ' |' + x).join(''); zvolene.clear(); zvolene.add(m.jmeno); }
         kresli(); if (poVyberu) poVyberu();
-      } } }, h('img', { src: m.url, alt: m.jmeno }), h('span', { text: m.jmeno })));
+      } } }, h('img', { src: m.url, alt: m.jmeno }), m.video ? h('b', { class: 'hraj', text: '▶ video' }) : null, h('span', { text: m.jmeno })));
     }
     mrizka.append(h('button', { class: 'medium', type: 'button', on: { click: async () => {
       document.getElementById('soubor').onchange = async e => { await nahraj([...e.target.files]); e.target.value = ''; document.getElementById('soubor').onchange = puvodniNahrani; kresli(); };

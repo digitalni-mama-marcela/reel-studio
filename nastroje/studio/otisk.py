@@ -15,6 +15,7 @@ CASTI = {"strih": "přepis a střih", "plan": "scény", "vzhled": "vzhled", "pod
 # klíče řádku plánu, které render nečte (značky, popisky, časy pro tabulku)
 PLAN_BEZ = {"text", "text_vety", "text_drive", "od", "do", "duvod", "zdroj", "typ", "rucne", "odmitnuto", "navrh", "odmitnuty_navrh", "zkontrolovat"}
 OBRAZKY = (".png", ".jpg", ".jpeg", ".webp")
+NAHRAVKY = (".mp4", ".mov")          # nahrávky obrazovky ve vložce, leží v PODKLADY-SEM/NAHRAVKY-OBRAZOVKY
 
 
 def _h(data):
@@ -50,11 +51,13 @@ def soubory_planu(plan, podklady):
             continue
         for kus in obsah.replace("|", "\n").replace(" / ", "\n").splitlines():
             kus = kus.strip()
-            if not kus.lower().endswith(OBRAZKY):
+            if not kus.lower().endswith(OBRAZKY + NAHRAVKY):
                 continue
             p = Path(kus)
             if not p.is_absolute() and podklady:
                 p = podklady / kus
+                if kus.lower().endswith(NAHRAVKY) and not p.is_file():
+                    p = podklady / "NAHRAVKY-OBRAZOVKY" / kus
             out.add(p)
     return sorted(out)
 

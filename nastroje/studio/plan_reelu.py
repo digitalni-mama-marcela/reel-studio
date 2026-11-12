@@ -12,6 +12,8 @@ import json
 import os
 import re
 import shutil
+import subprocess
+import tempfile
 import threading
 import time
 import unicodedata
@@ -22,7 +24,12 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 from . import editor, otisk, planer
 
 OBRAZKY = (".png", ".jpg", ".jpeg", ".webp")
+NAHRAVKY = (".mp4", ".mov")              # nahrávky obrazovky: leží v PODKLADY-SEM/NAHRAVKY-OBRAZOVKY (reel.NAHRAVKY)
+SLOZKA_NAHRAVEK = "NAHRAVKY-OBRAZOVKY"
 MAX_SOUBOR = 50 * 1024 * 1024
+MAX_NAHRAVKA = 500 * 1024 * 1024
+ZASTUPNY_NAHLED = (b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 160"><rect width="90" height="160" fill="#2b2522"/>'
+                   b'<path d="M35 62 L60 80 L35 98 Z" fill="#faf7f2"/></svg>')
 # prvky, které jde na stránce vybrat (ostatní zůstanou, jak jsou, mění je Claude podle slov zákaznice)
 JEDNODUCHE = ["mini", "karty_slov", "velke_slovo", "vlozka", "karticky", "vyzva", "zoom"]
 TEXTOVE = ["mini", "karty_slov", "hook", "velke_slovo", "vyzva", "wow", "nalepky", "stitky", "zapisnik", "zprava"]
@@ -52,6 +59,33 @@ def volne_jmeno(slozka, jmeno):
     return cil
 
 
+def cesta_nahravky(podklady, jmeno):
+    return Path(podklady) / SLOZKA_NAHRAVEK / jmeno
+
+
+def nahled_nahravky(video):
+    """Jeden snímek z nahrávky (JPG, 360 px) pro knihovnu na stránce. Uloží se do PRACOVNI reelu (jinak do dočasné
+    složky) a znovu se dělá, jen když se nahrávka změní. Vrátí cestu, nebo None, když ffmpeg snímek neudělá."""
+    video = Path(video)
+    pracovni = video.parent.parent.parent / "PRACOVNI"
+    slozka = (pracovni if pracovni.is_dir() else Path(tempfile.gettempdir()) / "reel-studio") / "nahledy-nahravek"
+    st = video.stat()
+    klic = hashlib.sha1(("%s|%d|%d" % (video, st.st_size, int(st.st_mtime))).encode("utf-8")).hexdigest()[:16]
+    cil = slozka / (klic + ".jpg")
+    if cil.is_file():
+        return cil
+    slozka.mkdir(parents=True, exist_ok=True)
+    for zacatek in ("0.5", "0"):          # velmi krátká nahrávka nemusí mít snímek v 0,5 s
+        try:
+            subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", zacatek, "-i", str(video), "-frames:v", "1",
+                            "-vf", "scale=360:-2", str(cil)], capture_output=True, timeout=60)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if cil.is_file() and cil.stat().st_size:
+            return cil
+    return None
+
+
 def media(podklady, plan):
     """Obrázky pro stránku: knihovna (soubory v podkladech) a obrázky, na které plán odkazuje odjinud.
     Vrátí (seznam pro stránku, {klíč: cesta} pro server, {text v plánu: klíč})."""
@@ -64,17 +98,29 @@ def media(podklady, plan):
                 seznam.append({"klic": p.name, "jmeno": p.name, "url": "/media/" + quote(p.name), "knihovna": True})
                 odkazy[p.name] = p.name
                 odkazy[str(p)] = p.name
+        nahravky = podklady / SLOZKA_NAHRAVEK
+        if nahravky.is_dir():
+            for p in sorted(nahravky.iterdir(), key=lambda x: x.stat().st_mtime):
+                if p.is_file() and p.suffix.lower() in NAHRAVKY and not p.name.startswith(".") and p.name not in povolene:
+                    povolene[p.name] = p
+                    seznam.append({"klic": p.name, "jmeno": p.name, "url": "/media/" + quote(p.name), "knihovna": True,
+                                   "video": True})
+                    odkazy[p.name] = p.name
+                    odkazy[str(p)] = p.name
     for rad in list(plan.get("radky", [])) + list(plan.get("bez_vety", [])):
         for kus in str(rad.get("obsah") or "").replace("|", "\n").replace(" / ", "\n").splitlines():
             kus = kus.strip()
-            if not kus.lower().endswith(OBRAZKY) or kus in odkazy:
+            if not kus.lower().endswith(OBRAZKY + NAHRAVKY) or kus in odkazy:
                 continue
             p = Path(kus) if Path(kus).is_absolute() else podklady / kus
             if p.is_file():
                 klic = "x%d" % len(povolene)
                 povolene[klic] = p
                 odkazy[kus] = klic
-                seznam.append({"klic": klic, "jmeno": p.name, "url": "/media/" + klic, "knihovna": False})
+                polozka = {"klic": klic, "jmeno": p.name, "url": "/media/" + klic, "knihovna": False}
+                if p.suffix.lower() in NAHRAVKY:
+                    polozka["video"] = True
+                seznam.append(polozka)
     return seznam, povolene, odkazy
 
 
@@ -137,6 +183,13 @@ class _Handler(editor._Handler):
             if not p:
                 self._posli(404, b'{"chyba":"neni"}')
                 return
+            if p.suffix.lower() in NAHRAVKY:     # nahrávka obrazovky: na stránce jen jeden snímek
+                n = nahled_nahravky(p)
+                if n:
+                    self._posli(200, n.read_bytes(), "image/jpeg")
+                else:
+                    self._posli(200, ZASTUPNY_NAHLED, "image/svg+xml")
+                return
             typ = {".png": "image/png", ".webp": "image/webp"}.get(p.suffix.lower(), "image/jpeg")
             self._posli(200, p.read_bytes(), typ)
         else:
@@ -190,29 +243,58 @@ class _Handler(editor._Handler):
     def _nahraj(self, url, delka):
         s = self.server
         jmeno = (parse_qs(url.query).get("jmeno") or [""])[0]
-        if Path(jmeno).suffix.lower() not in OBRAZKY:
-            self.rfile.read(delka)
-            self._json(400, {"chyba": "%s: studio umí PNG, JPG a WEBP. Fotku z iPhonu (HEIC) ulož jako JPG." % (jmeno or "soubor")})
+        pripona = Path(jmeno).suffix.lower()
+        if pripona not in OBRAZKY + NAHRAVKY:
+            self._zahod(delka)
+            self._json(400, {"chyba": "%s: studio umí obrázky PNG, JPG a WEBP a nahrávky obrazovky MP4 a MOV. "
+                                      "Fotku z iPhonu (HEIC) ulož jako JPG." % (jmeno or "soubor")})
             return
-        if delka <= 0 or delka > MAX_SOUBOR:
-            self.rfile.read(delka) if delka > 0 else None
-            self._json(400, {"chyba": "%s: soubor je prázdný, nebo větší než 50 MB." % jmeno})
+        video = pripona in NAHRAVKY
+        limit = MAX_NAHRAVKA if video else MAX_SOUBOR
+        if delka <= 0 or delka > limit:
+            self._zahod(delka)
+            self._json(400, {"chyba": "%s: soubor je prázdný, nebo větší než %d MB." % (jmeno, limit // (1024 * 1024))})
             return
-        telo = self.rfile.read(delka)
+        slozka = s.podklady / SLOZKA_NAHRAVEK if video else s.podklady
         with s.zamek:
-            s.podklady.mkdir(parents=True, exist_ok=True)
-            cil = volne_jmeno(s.podklady, bezpecne_jmeno(jmeno))
+            slozka.mkdir(parents=True, exist_ok=True)
+            cil = volne_jmeno(slozka, bezpecne_jmeno(jmeno))
+            if video and (s.podklady / cil.name).exists():   # stejné jméno jako obrázek v knihovně: nové jméno
+                cil = volne_jmeno(slozka, "nahravka-" + cil.name)
             tmp = cil.with_name(cil.name + ".tmp")
-            tmp.write_bytes(telo)
+            with open(tmp, "wb") as f:       # po kouscích, nahrávka se nedrží celá v paměti
+                zbyva = delka
+                while zbyva > 0:
+                    kus = self.rfile.read(min(zbyva, 1024 * 1024))
+                    if not kus:
+                        break
+                    f.write(kus)
+                    zbyva -= len(kus)
+            if zbyva > 0:
+                tmp.unlink()
+                self._json(400, {"chyba": "%s: nahrání se přerušilo, zkus to znovu." % jmeno})
+                return
             os.replace(str(tmp), str(cil))
         s.zmeny.add("podklady")
-        self._json(200, {"ok": True, "media": {"klic": cil.name, "jmeno": cil.name, "url": "/media/" + quote(cil.name), "knihovna": True}})
+        m = {"klic": cil.name, "jmeno": cil.name, "url": "/media/" + quote(cil.name), "knihovna": True}
+        if video:
+            m["video"] = True
+        self._json(200, {"ok": True, "media": m})
+
+    def _zahod(self, delka):
+        while delka > 0:
+            kus = self.rfile.read(min(delka, 1024 * 1024))
+            if not kus:
+                break
+            delka -= len(kus)
 
     def _odloz(self, data):
         """Obrázek z knihovny do PODKLADY-SEM/ODLOZENE (nic se nemaže). Jen když ho žádná scéna nepoužívá."""
         s = self.server
         jmeno = str(data.get("jmeno", ""))
         p = s.podklady / jmeno
+        if Path(jmeno).suffix.lower() in NAHRAVKY:
+            p = cesta_nahravky(s.podklady, jmeno)
         if Path(jmeno).name != jmeno or not p.is_file():
             self._json(400, {"chyba": "obrázek %s v knihovně není" % jmeno})
             return

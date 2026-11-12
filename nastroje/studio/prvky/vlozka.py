@@ -125,6 +125,7 @@ def najdi_soubor(spec, kontext):
         podklady = kontext.get("podklady") if kontext else None
         if podklady:
             kandidati.append(Path(podklady) / nazev)
+            kandidati.append(Path(podklady) / "NAHRAVKY-OBRAZOVKY" / nazev)   # nahrávky obrazovky (reel.NAHRAVKY)
         kandidati.append(Path(nazev))
     # Mac ukládá háčky v názvu jako zvlášť znak (NFD), text z plánu je NFC: porovnej názvy v obou zápisech
     import unicodedata
