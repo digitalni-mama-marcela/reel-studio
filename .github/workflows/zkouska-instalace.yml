@@ -57,6 +57,8 @@ jobs:
           grep -q "STATUS uv OK" kontrola.txt
           grep -q "STATUS python OK" kontrola.txt
           grep -q "Diakritika se uloží i přečte správně" kontrola.txt
+          # nic mimo složku studia: žádný python v ~/.local/bin (uv python install --no-bin)
+          if ls "$HOME/.local/bin/" 2>/dev/null | grep -qi python; then echo "python v .local/bin"; exit 1; fi
 
       - name: 2 Priprava (knihovny a ffmpeg)
         run: |

@@ -8,7 +8,7 @@ a pak spustí tenhle soubor:
 Co dělá:
   1. najde (nebo založí) prostředí studia MIMO složku Reely a mimo iCloud a OneDrive:
        Mac:     ~/Library/Application Support/ClaudeReelStudio
-       Windows: %LOCALAPPDATA%\\ClaudeReelStudio
+       Windows: %USERPROFILE%\\.claude-reel-studio (ne AppData, viz slozka_dat)
      V něm je uv, Python 3.12, knihovny (venv podle pozadavky.txt), ffmpeg a modely přepisu (HF_HOME).
      Nic se neinstaluje do systému a nechce to heslo ani práva správce.
   2. spustí krok studia: python -m studio <krok> ...  (kód je vedle tohoto souboru ve složce studio/)
@@ -87,7 +87,9 @@ def slozka_dat():
     if env:
         return Path(env)
     if JE_WINDOWS:
-        return Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))) / "ClaudeReelStudio"
+        # ne AppData: aplikace Claude na Windows je balíček (MSIX) a zápisy do AppData Windows potichu přesměruje
+        # do AppData\Local\Packages\Claude_...\LocalCache (OVĚŘENO na notebooku Marcely 12. 11. 2026), viz spust.ps1
+        return Path(os.environ.get("USERPROFILE") or str(Path.home())) / ".claude-reel-studio"
     if JE_MAC:
         return Path.home() / "Library" / "Application Support" / "ClaudeReelStudio"
     return Path.home() / ".claude-reel-studio"

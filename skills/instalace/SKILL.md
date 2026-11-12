@@ -9,7 +9,7 @@ Zákaznice nikdy neotevřela terminál. Mluv s ní česky, tykej, krátké věty
 volby. Odborná slova (Python, uv, ffmpeg) jí neříkej, řekni „nástroje pro střih“.
 
 Zákaznice nic neinstaluje sama. Studio si všechno, co potřebuje, stáhne samo do své složky prostředí
-(Mac: `~/Library/Application Support/ClaudeReelStudio`, Windows: `%LOCALAPPDATA%\ClaudeReelStudio`).
+(Mac: `~/Library/Application Support/ClaudeReelStudio`, Windows: `%USERPROFILE%\.claude-reel-studio`).
 Nechce to heslo, práva správce, Homebrew ani winget a nic se neinstaluje do systému.
 
 ## 0. Který počítač (nejdřív, jednou)

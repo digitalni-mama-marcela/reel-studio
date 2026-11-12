@@ -28,7 +28,9 @@ Repozitář do její složky nestahuj (žádné git clone). Stačí ti tenhle n�
 1. Najdi program Claude Code (v aplikaci Claude bývá schovaný, příkaz `/plugin` v chatu aplikace nefunguje):
    - nejdřív `command -v claude` (Windows: `where claude`);
    - Mac, když nic: `ls -dt "$HOME/Library/Application Support/Claude/claude-code/"*/*/claude.app/Contents/MacOS/claude | head -1` (ls -dt, nejnovější);
-   - Windows, když nic: hledej `claude.exe` ve složce `%APPDATA%\Claude\claude-code` (nevyzkoušeno).
+   - Windows, když nic: hledej `claude.exe` ve složce `%APPDATA%\Claude\claude-code`, a když tam není, ve
+     `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\claude-code` (aplikace z balíčku MSIX má
+     AppData přesměrované tam, OVĚŘENO 12. 11. 2026).
    Když program nenajdeš, proveď ji klikáním: Nastavení → Customize → Plugins → + Add → přidat z GitHubu
    `digitalni-mama-marcela/reel-studio` → Install. Pak pokračuj krokem 4.
 2. `"<program>" plugin marketplace add digitalni-mama-marcela/reel-studio`

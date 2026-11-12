@@ -88,8 +88,11 @@ export UV_PYTHON_INSTALL_DIR UV_CACHE_DIR UV_PYTHON_PREFERENCE UV_NO_CONFIG REEL
 
 if ! "$UV" python find "$PY_REQUEST" >/dev/null 2>&1; then
   echo 'STATUS python: getting the studio its own Python 3.12 (about 25 MB, one time)'
-  "$UV" python install "$PY_REQUEST" >/dev/null 2>&1 || "$UV" python install "$PY_REQUEST" \
+  # --no-bin: no python3.12 link in ~/.local/bin, everything stays in the studio folder
+  "$UV" python install --no-bin "$PY_REQUEST" >/dev/null 2>&1 || "$UV" python install --no-bin "$PY_REQUEST" \
     || missing python 'uv could not download Python 3.12: check the internet connection and run it again'
+  "$UV" python find "$PY_REQUEST" >/dev/null 2>&1 \
+    || missing python "Python 3.12 was downloaded but cannot be started from $DATA. Send this output to Marcela"
   echo 'STATUS python OK (3.12, the studio'"'"'s own copy)'
 fi
 

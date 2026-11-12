@@ -14,13 +14,16 @@ HERE=$(cd "${0%/*}" 2>/dev/null && pwd) || exit 0
 
 if [ -n "${REEL_STUDIO_DATA:-}" ]; then
   DATA="$REEL_STUDIO_DATA"
-elif [ -n "${LOCALAPPDATA:-}" ]; then                      # Windows (Git Bash)
-  DATA="$LOCALAPPDATA/ClaudeReelStudio"
+elif [ -n "${USERPROFILE:-}" ]; then                       # Windows (Git Bash), stejně jako spust.ps1
+  DATA="$USERPROFILE/.claude-reel-studio"
 elif [ "$(uname -s)" = Darwin ]; then
   DATA="$HOME/Library/Application Support/ClaudeReelStudio"
 else
   DATA="$HOME/.claude-reel-studio"
 fi
+
+# Git Bash: C:\Users\... na /c/Users/... (cygpath je součást Git for Windows)
+command -v cygpath >/dev/null 2>&1 && DATA=$(cygpath -u "$DATA")
 
 for PY in "$DATA/venv/bin/python" "$DATA/venv/Scripts/python.exe"; do
   if [ -f "$PY" ]; then
