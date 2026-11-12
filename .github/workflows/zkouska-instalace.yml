@@ -52,8 +52,8 @@ jobs:
       - name: 1 Kontrola pocitace (stahne uv a Python)
         run: |
           mkdir -p "$REELY"
-          # testovací počítač nemá CapCut ani písma, kontrola to nahlásí červeně: tady se hlídá jen spouštěč
-          $STUDIO kontrola --slozka "$REELY" | tee kontrola.txt || true
+          # kontrola musí skončit zeleně i na čistém počítači (CapCut ani písma v systému kurz nepotřebuje)
+          $STUDIO kontrola --slozka "$REELY" | tee kontrola.txt
           grep -q "STATUS uv OK" kontrola.txt
           grep -q "STATUS python OK" kontrola.txt
           grep -q "Diakritika se uloží i přečte správně" kontrola.txt

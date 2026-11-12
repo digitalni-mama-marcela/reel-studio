@@ -1,6 +1,8 @@
 """Kontrola počítače (krok 0).
 
-Zjistí systém, čip, volné místo, nástroje, CapCut, písma a to, zda je složka v cloudu.
+Zjistí systém, čip, volné místo, nástroje a to, zda je složka v cloudu.
+CapCut a písma v systému se nekontrolují: kurz CapCut nepoužívá a studio kreslí text vlastními písmy
+(složka pisma pluginu). kontrola_capcutu a kontrola_pisem zůstávají jen pro volitelný projekt do CapCutu.
 Používá jen standardní knihovnu Pythonu a běží i na Pythonu 3.9, aby šla spustit dřív,
 než se cokoli doinstaluje.
 
@@ -24,8 +26,11 @@ CHYBA = "chyba"
 INFO = "info"
 ZNACKY = {OK: "✅", CHYBA: "🔴", INFO: "ℹ️"}
 
-# Velikost modelu large-v3 (OVĚŘENO: Hugging Face, Systran/faster-whisper-large-v3, 9. 10. 2026).
-VELIKOST_MODELU_GB = 3.09
+# Model přepisu turbo (výchozí): 1,5 GB na disku (OVĚŘENO měřením na Macu 12. 11. 2026, du).
+VELIKOST_MODELU_GB = 1.6
+# Celé studio s modelem: uv, Python, knihovny, ffmpeg asi 0,9 GB + model 1,6 GB (OVĚŘENO 12. 11. 2026).
+# Kopie videí a hotové reely chtějí další místo, proto aspoň 5 GB volných (stejně jako popis instalace).
+POTREBNE_MISTO_GB = 5.0
 
 # Písma podle vzhledu. Hledáme podle názvu souboru bez mezer, pomlček a velikosti písmen.
 PISMA_VZHLEDU = {
@@ -162,14 +167,14 @@ def nejblizsi_existujici(cesta):
 
 def kontrola_mista(cesta):
     volno_gb = shutil.disk_usage(str(nejblizsi_existujici(cesta))).free / 1e9
-    data = {"volno_gb": round(volno_gb, 1), "model_gb": VELIKOST_MODELU_GB}
-    if volno_gb < VELIKOST_MODELU_GB:
+    data = {"volno_gb": round(volno_gb, 1), "model_gb": VELIKOST_MODELU_GB, "potreba_gb": POTREBNE_MISTO_GB}
+    if volno_gb < POTREBNE_MISTO_GB:
         return vysledek("misto", CHYBA,
-                        "Volné místo je %.1f GB. Model přepisu má %.2f GB." % (volno_gb, VELIKOST_MODELU_GB),
+                        "Volné místo je %.1f GB. Studio potřebuje aspoň %.0f GB (samo zabere asi 2,5 GB, zbytek je "
+                        "pro videa)." % (volno_gb, POTREBNE_MISTO_GB),
                         "Uvolni místo na disku (smaž nebo přesuň staré soubory) a spusť kontrolu znovu.", data)
     return vysledek("misto", OK,
-                    "Volné místo je %.1f GB. Model přepisu má %.2f GB. Kolik zabere jeden reel, zatím "
-                    "neměříme (test T15)." % (volno_gb, VELIKOST_MODELU_GB), None, data)
+                    "Volné místo je %.1f GB. Studio samo zabere asi 2,5 GB." % volno_gb, None, data)
 
 
 def icloud_zapnuto(klic):
@@ -371,8 +376,6 @@ def spust_kontroly(slozka, vzhled):
         kontrola_cesty(slozka),
         kontrola_uv(system),
         kontrola_ffmpeg(system),
-        kontrola_capcutu(system),
-        kontrola_pisem(system, vzhled),
         kontrola_diakritiky(),
     ], pocitac
 
