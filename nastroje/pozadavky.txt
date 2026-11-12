@@ -5,4 +5,6 @@ av==19.0.1
 opencv-python-headless==4.11.0.86
 pillow==12.3.0
 numpy==2.5.4
-ai-edge-litert==2.3.0
+# ai-edge-litert (text za hlavou) nemá sestavení pro Mac s procesorem Intel (PyPI, ověřeno 11. 11. 2026).
+# Tam se vynechá a studio kreslí text před osobu a řekne to (maska.py).
+ai-edge-litert==2.3.0; sys_platform != "darwin" or platform_machine == "arm64"

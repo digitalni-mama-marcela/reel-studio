@@ -11,13 +11,20 @@ V aplikaci Claude otevři záložku Code, vyber složku Reely a napiš:
 
 **nainstaluj studio z github.com/digitalni-mama-marcela/reel-studio**
 
-Claude zbytek udělá sám a na všechno se tě zeptá.
+Claude zbytek udělá sám a na všechno se tě zeptá. Funguje na Macu (macOS 14 a novější s čipem M) i na Windows 10
+a 11. Nic neinstaluješ sama a nikdo po tobě nechce heslo: studio si nástroje pro střih stáhne samo.
+
+**Jen na Windows, jednou předem:** nainstaluj Git for Windows z git-scm.com (tlačítko Download for Windows,
+pak pořád Next). Pak aplikaci Claude úplně zavři (i ikonu vedle hodin) a znovu otevři. Bez Gitu si Claude
+plugin z GitHubu nestáhne. Když Claude napíše, že chybí git, udělej tohle a zkus to znovu.
 
 ## Pro Clauda: jak studio nainstalovat
 Zákaznice tě požádala o instalaci tohoto pluginu. Mluv s ní česky, tykej, krátce, bez odborných slov.
 Před každým příkazem jí jednou větou řekni, co děláš. Nic nemaž a nic neměň mimo kroky níž.
 Repozitář do její složky nestahuj (žádné git clone). Stačí ti tenhle návod, plugin si stáhne krok 3 sám.
 
+0. Windows: když chybí git (`git --version` nejde), řekni jí krok „Jen na Windows“ výš a počkej, až ho udělá.
+   Bez gitu nejde přidat plugin z GitHubu.
 1. Najdi program Claude Code (v aplikaci Claude bývá schovaný, příkaz `/plugin` v chatu aplikace nefunguje):
    - nejdřív `command -v claude` (Windows: `where claude`);
    - Mac, když nic: `ls -dt "$HOME/Library/Application Support/Claude/claude-code/"*/*/claude.app/Contents/MacOS/claude | head -1` (ls -dt, nejnovější);

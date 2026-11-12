@@ -5,6 +5,7 @@ Používá jen standardní knihovnu Pythonu a běží i na Pythonu 3.9, aby šla
 než se cokoli doinstaluje.
 
 Windows: větev je napsaná, ale na Windows ještě NEBYLA vyzkoušena (test T10).
+Spouští se přes spouštěč: `spust.sh kontrola ...` (Mac) nebo `spust.ps1 kontrola ...` (Windows).
 """
 import argparse
 import json
@@ -123,13 +124,17 @@ def kontrola_pocitace(pocitac):
     pamet = ("%d GB paměti" % pocitac["pamet_gb"]) if pocitac["pamet_gb"] else "paměť nezjištěna"
     if system == "Darwin":
         nazev = "macOS %s" % pocitac["verze"]
+        # Knihovna na čtení videa (av 19) má pro čip M sestavení až od macOS 14, pro Intel od macOS 11;
+        # obrazová knihovna (opencv 4.11) od macOS 13 (PyPI, ověřeno 11. 11. 2026).
+        minimum = 14 if pocitac["apple_silicon"] else 13
         try:
-            stary = int(pocitac["verze"].split(".")[0]) < 13
+            stary = int(pocitac["verze"].split(".")[0]) < minimum
         except ValueError:
             stary = False
         if stary:
             return vysledek("pocitac", CHYBA, "%s je moc starý." % nazev,
-                            "Potřebuješ macOS 13 nebo novější. Aktualizuj systém.", pocitac)
+                            "Potřebuješ macOS %d nebo novější. Aktualizuj systém (Nastavení systému → Obecné → "
+                            "Aktualizace softwaru)." % minimum, pocitac)
     elif system == "Windows":
         nazev = "Windows %s" % pocitac["verze"]
         try:
@@ -236,29 +241,26 @@ def nastroj(prikaz, argumenty):
     return cesta, (radky[0] if radky else "")
 
 
-def instalace(system, mac, win):
-    if system == "Darwin":
-        if shutil.which("brew"):
-            return mac
-        return "Nejdřív nainstaluj Homebrew (brew.sh), pak: %s" % mac
-    return win + " (na Windows zatím nevyzkoušeno)"
+# uv a ffmpeg si studio stahuje samo do své složky (spouštěč spust.sh / spust.ps1 a krok priprava).
+# Zákaznice nic neinstaluje, nepotřebuje Homebrew, winget ani heslo.
+POUZIJ_SPOUSTEC = ("Spusť kontrolu přes spouštěč studia (Mac: spust.sh, Windows: spust.ps1), ten si uv "
+                   "stáhne sám.")
 
 
 def kontrola_uv(system):
     cesta, verze = nastroj("uv", ["--version"])
     if not cesta:
-        return vysledek("uv", CHYBA, "uv chybí.",
-                        instalace(system, "brew install uv",
-                                  'powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"'))
+        return vysledek("uv", CHYBA, "uv chybí.", POUZIJ_SPOUSTEC)
     return vysledek("uv", OK, verze + ".", None, {"cesta": cesta, "verze": verze})
 
 
 def kontrola_ffmpeg(system):
     cesta, verze = nastroj("ffmpeg", ["-hide_banner", "-version"])
     ffprobe = shutil.which("ffprobe")
-    nastroj_instalace = instalace(system, "brew install ffmpeg", "winget install ffmpeg")
+    nastroj_instalace = "Smaž složku ffmpeg ve složce prostředí studia a spusť krok priprava znovu."
     if not cesta or not ffprobe:
-        return vysledek("ffmpeg", CHYBA, "ffmpeg nebo ffprobe chybí.", nastroj_instalace)
+        return vysledek("ffmpeg", INFO, "ffmpeg zatím není. Studio si ho stáhne samo v kroku Příprava, "
+                        "bez hesla.", None)
     filtry = spust([cesta, "-hide_banner", "-filters"])[1]
     dekodery = spust([cesta, "-hide_banner", "-decoders"])[1]
     kodery = spust([cesta, "-hide_banner", "-encoders"])[1]
@@ -272,7 +274,7 @@ def kontrola_ffmpeg(system):
     data = {"cesta": cesta, "verze": verze, "kodery_h264": h264, "textove_filtry": textove}
     if chybi:
         return vysledek("ffmpeg", CHYBA, "%s. Chybí: %s." % (verze, ", ".join(chybi)),
-                        "Nainstaluj ffmpeg znovu jinou sestavou. " + nastroj_instalace, data)
+                        nastroj_instalace, data)
     zprava = "%s. Umí přečíst video z iPhonu (HEVC) a položit text na video." % verze
     if not textove:
         zprava += " Textové filtry nemá. Nevadí, texty kreslí náš kód."

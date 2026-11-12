@@ -1,0 +1,119 @@
+# Reel Studio (Digitalni Mama Marcela): installation and one full reel on a clean Windows and Mac machine.
+# Runs on a push to a branch named zkouska-* (never on main: students get updates from main), or by hand.
+# The machine gets no Python, ffmpeg or uv on its PATH, like a customer's computer: the studio must fetch its own.
+# Commands are run the way Claude Code runs them: Git Bash on Windows calling spust.ps1, sh on the Mac.
+name: zkouska-instalace
+
+on:
+  push:
+    branches: ['zkouska-*']
+  workflow_dispatch:
+
+jobs:
+  zkouska:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            nazev: windows-x64
+          - os: macos-latest
+            nazev: mac-apple-silicon
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Schovat predinstalovane nastroje (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $keep = ($env:PATH -split ';') | Where-Object { $_ -notmatch 'python|Python|hostedtoolcache|ffmpeg|uv|\.cargo|Strawberry' }
+          "PATH=$($keep -join ';')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Schovat predinstalovane nastroje (Mac)
+        if: runner.os == 'macOS'
+        run: echo "PATH=/usr/bin:/bin:/usr/sbin:/sbin" >> "$GITHUB_ENV"
+
+      - name: Spoustec studia
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then
+            echo "STUDIO=powershell -NoProfile -ExecutionPolicy Bypass -File $GITHUB_WORKSPACE/nastroje/spust.ps1" >> "$GITHUB_ENV"
+            echo "REELY=$USERPROFILE/Reely zkouška" >> "$GITHUB_ENV"
+          else
+            echo "STUDIO=sh $GITHUB_WORKSPACE/nastroje/spust.sh" >> "$GITHUB_ENV"
+            echo "REELY=$HOME/Reely zkouška" >> "$GITHUB_ENV"
+          fi
+          command -v python3 python py ffmpeg uv || true
+
+      - name: 1 Kontrola pocitace (stahne uv a Python)
+        run: |
+          mkdir -p "$REELY"
+          $STUDIO kontrola --slozka "$REELY" | tee kontrola.txt
+          grep -q "STATUS uv OK\|uv " kontrola.txt
+
+      - name: 2 Priprava (knihovny a ffmpeg)
+        run: |
+          $STUDIO priprava | tee priprava.txt
+          grep -q "Příprava prostředí: hotovo" priprava.txt
+
+      - name: 2b Model prepisu na pozadi
+        run: |
+          $STUDIO model --na-pozadi | tee model.txt
+          grep -q "STATUS model turbo: chybi" model.txt
+          $STUDIO model --stav | tee model-stav.txt
+          grep -q "STATUS model turbo: stahuje" model-stav.txt
+
+      - name: 3 Druhe spusteni nic nestahuje
+        run: |
+          $STUDIO priprava | tee priprava2.txt
+          if grep -q "STATUS uv:\|STATUS python:\|Stahuju" priprava2.txt; then echo "druhe spusteni stahovalo"; exit 1; fi
+          $STUDIO kde
+
+      - name: 4 Zvukovy hook bez chyby (i pred instalaci vraci 0)
+        run: |
+          echo '{}' | sh "$GITHUB_WORKSPACE/nastroje/cink.sh" zacatek
+          echo '{}' | sh "$GITHUB_WORKSPACE/nastroje/cink.sh" konec
+          echo '{}' | REEL_STUDIO_DATA="$RUNNER_TEMP/prazdne" sh "$GITHUB_WORKSPACE/nastroje/cink.sh" zacatek
+
+      - name: 5 Zkusebni video s mluvenym slovem
+        run: |
+          FF=$($STUDIO kde | grep '^ffmpeg:' | cut -d' ' -f2-)
+          TEXT="Ahoj, tohle je zkouška studia. Natáčím krátké video na Instagram. Děkuju, že se díváš."
+          if [ "$RUNNER_OS" = Windows ]; then
+            powershell -NoProfile -Command "Add-Type -AssemblyName System.Speech; \$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; \$s.SetOutputToWaveFile('$RUNNER_TEMP\\hlas.wav'); \$s.Speak('$TEXT'); \$s.Dispose()"
+            HLAS="$RUNNER_TEMP/hlas.wav"
+          else
+            say -o "$RUNNER_TEMP/hlas.aiff" "$TEXT"
+            HLAS="$RUNNER_TEMP/hlas.aiff"
+          fi
+          "$FF" -y -v error -f lavfi -i "testsrc2=size=1080x1920:rate=30" -i "$HLAS" -shortest \
+            -c:v libx264 -pix_fmt yuv420p -c:a aac "$RUNNER_TEMP/Moje video ěščř.mp4"
+          echo "VIDEO=$RUNNER_TEMP/Moje video ěščř.mp4" >> "$GITHUB_ENV"
+
+      - name: 6 Cely reel
+        run: |
+          $STUDIO zaloz --reely "$REELY" --nazev "Zkouška Windows" | tee zaloz.txt
+          R=$(tail -1 zaloz.txt | tr -d '\r')
+          $STUDIO kopie --reel "$R" "$VIDEO"
+          $STUDIO kontrola-videa --reel "$R"
+          $STUDIO prepis --reel "$R"
+          $STUDIO navrh --reel "$R"
+          $STUDIO nahled --reel "$R" --bez-editoru
+          $STUDIO plan --reel "$R"
+          $STUDIO vzhled --reel "$R" --plan --zoom
+          ls -la "$R/VYSTUP"
+          $STUDIO model --stav | tee model-konec.txt
+          grep -q "STATUS model turbo: hotovo" model-konec.txt
+          mkdir -p vysledky && cp "$R"/VYSTUP/*.mp4 vysledky/ && cp *.txt vysledky/
+
+      - name: Ulozit vysledky
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zkouska-${{ matrix.nazev }}
+          path: vysledky
+          if-no-files-found: warn

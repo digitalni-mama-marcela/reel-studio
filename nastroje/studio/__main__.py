@@ -1,4 +1,4 @@
-"""Příkazy studia (etapa A). Spuštění ze složky jadro: python -m studio <krok> ...
+"""Příkazy studia (etapa A). Spuštění ze složky jadro: STUDIO <krok> ...
 
   zaloz           založí složku reelu
   kopie           zkopíruje video do PODKLADY-SEM (originál zůstane)
@@ -53,7 +53,7 @@ def krok_prubeh(a):
 def _reel(cesta):
     r = Path(cesta).expanduser().resolve()
     if not (r / "PRACOVNI").is_dir():
-        raise SystemExit("🔴 Složka %s není složka reelu (chybí PRACOVNI). Udělej: python -m studio zaloz --reely ... --nazev ..." % r)
+        raise SystemExit("🔴 Složka %s není složka reelu (chybí PRACOVNI). Udělej: STUDIO zaloz --reely ... --nazev ..." % r)
     return r
 
 
@@ -66,7 +66,7 @@ def krok_zaloz(a):
         k.info("Složka NASTAVENI ještě nebyla, založil jsem ji s výchozím nastavením.")
     slozka = reel.zaloz_reel(koren, a.nazev)
     k.pracovni = slozka / "PRACOVNI"
-    k.zelena("složka %s je připravená." % slozka, "nahraj video do %s a spusť kopii (python -m studio kopie --reel \"%s\" <video>)."
+    k.zelena("složka %s je připravená." % slozka, "nahraj video do %s a spusť kopii (STUDIO kopie --reel \"%s\" <video>)."
              % (slozka / "PODKLADY-SEM", slozka), {"slozka": str(slozka)})
     print(slozka)
     return k.kod()
@@ -98,7 +98,7 @@ def krok_kopie(a):
     else:
         k.zelena("%d video je ve složce reelu, otisky souhlasí, originály zůstaly na místě." % len(hotove) if len(hotove) == 1 else
                  "%d videa jsou ve složce reelu, otisky souhlasí, originály zůstaly na místě." % len(hotove),
-                 "kontrola videa (python -m studio kontrola-videa --reel \"%s\")." % r, {"videa": [h["cil"] for h in hotove]})
+                 "kontrola videa (STUDIO kontrola-videa --reel \"%s\")." % r, {"videa": [h["cil"] for h in hotove]})
     reel.pripis_do_seznamu(s["reely"], r.name, projekt.nazev_reelu(r), "video zkopírováno")
     _prubeh(r)
     return k.kod()
@@ -132,7 +132,7 @@ def krok_kontrola_videa(a):
     else:
         celkem = sum(x["delka_s"] for x in klipy)
         k.zelena("%d klip%s, celkem %s videa, všechno v pořádku." % (len(klipy), "" if len(klipy) == 1 else "y", cas_text(celkem)),
-                 "přepis (python -m studio prepis --reel \"%s\")." % r, {"klipy": klipy})
+                 "přepis (STUDIO prepis --reel \"%s\")." % r, {"klipy": klipy})
     _prubeh(r)
     return k.kod()
 
@@ -183,7 +183,7 @@ def krok_prepis(a):
         zprava += " ⚠️ Hlídaná slova ke kontrole sluchem: %s." % ", ".join("%s '%s'" % h for h in hlidanych)
     else:
         zprava += " Hlídaná slova: žádná."
-    k.zelena(zprava, "návrh střihu (python -m studio navrh --reel \"%s\"). Věty jsou v PRACOVNI/klip-*/prepis-vety.txt." % r,
+    k.zelena(zprava, "návrh střihu (STUDIO navrh --reel \"%s\"). Věty jsou v PRACOVNI/klip-*/prepis-vety.txt." % r,
              {"slov": slov, "delka_s": round(delka, 1), "cas_s": round(cas, 1), "model": a.model, "hlidana": hlidanych})
     reel.pripis_do_seznamu(s["reely"], r.name, projekt.nazev_reelu(r), "přepis hotový")
     _prubeh(r)
@@ -217,7 +217,7 @@ def krok_navrh(a):
     pokusy = sum(1 for d in dvojice if d["druh"] == "prvni_pokus")
     k.zelena("%d vět, opakovaných %d (vyhazuju první pokus), vynechaných ve druhém pokusu %d, znovu začatých uvnitř věty %d, podobných %d, dlouhých pauz %d. Zůstává %d vět. Návrh je v PRACOVNI/navrh-strihu.txt." %
              (sum(len(v) for v in klipy_vety), stejne, pokusy, len(vynechat), len(dvojice) - stejne - pokusy, len(pauzy), len(vyber)),
-             "náhled (python -m studio nahled --reel \"%s\"), nebo uprav výběr: --vyber k1-v01,k1-v02 --vynechat k1-v05:1,2" % r)
+             "náhled (STUDIO nahled --reel \"%s\"), nebo uprav výběr: --vyber k1-v01,k1-v02 --vynechat k1-v05:1,2" % r)
     _prubeh(r)
     return k.kod()
 
@@ -320,7 +320,7 @@ def krok_nahled(a):
     if cervene:
         k.cervena(zprava, "poslechni si místa z kontroly; když je to špatně, uprav výběr v editoru a udělej náhled znovu.")
     else:
-        k.zelena(zprava, "podívej se na náhled. Řekni 'jo', nebo otevři editor (python -m studio editor --reel \"%s\")." % r,
+        k.zelena(zprava, "podívej se na náhled. Řekni 'jo', nebo otevři editor (STUDIO editor --reel \"%s\")." % r,
                  {"nahled": str(mp4), "delka_s": osa["delka"]})
     reel.pripis_do_seznamu(s["reely"], r.name, projekt.nazev_reelu(r), "náhled %d" % n)
     _prubeh(r)
@@ -384,7 +384,7 @@ def krok_vzhled(a):
     k = Krok("Vzhled", s["pracovni"])
     osa_soubor = s["pracovni"] / "casova-osa.json"
     if not osa_soubor.exists():
-        k.cervena("ještě není náhled.", "nejdřív udělej náhled (python -m studio nahled --reel \"%s\")." % r)
+        k.cervena("ještě není náhled.", "nejdřív udělej náhled (STUDIO nahled --reel \"%s\")." % r)
         return k.kod()
     ulozeno = projekt.nacti_json(s["pracovni"] / "vzhled.json", {}) or {}
     zmen = titulky.pouzij_upravy(projekt.vzhled_upravy(r))
@@ -979,7 +979,7 @@ def krok_oprava_titulku(a):
     projekt.uloz_json(s["pracovni"] / "opravy-claude.json", hist)
     k.zelena("opraveno vět %d%s. Video se nestříhá, mění se jen titulky." % (
         len(zaznam), (", zapamatováno pro další reely: " + ", ".join(nauceno)) if nauceno else ""),
-        "náhled: python -m studio nahled --reel \"%s\"." % r)
+        "náhled: STUDIO nahled --reel \"%s\"." % r)
     return k.kod()
 
 
@@ -1036,7 +1036,7 @@ def krok_styl(a):
             "všechny" if st.get("prvky") is None else len(st["prvky"]),
             "podle vzhledu" if st.get("zvuky") is None else (", ".join(st["zvuky"]) or "žádné"), len(st.get("obrazky") or []),
             (", %d částí jsem nepochopil (viz ⚠️ výš)" % pozor) if pozor else "", cesty[0], cesty[1], cesty[2]),
-            "plán a vzhled: python -m studio plan --reel \"%s\" a pak vzhled --reel \"%s\" --plan --zoom." % (r, r))
+            "plán a vzhled: STUDIO plan --reel \"%s\" a pak vzhled --reel \"%s\" --plan --zoom." % (r, r))
         return k.kod()
     # obyčejná věta zákaznice pro tento reel (a s --vzdy i trvale)
     ulozeno = projekt.nacti_json(s["pracovni"] / "vzhled.json", {}) or {}
@@ -1112,7 +1112,7 @@ def krok_styl(a):
             cesty.append(_styl.soubor_nastaveni(r))
     k.zelena("„%s“: %d změn pro vzhled %s%s. Zapsáno: %s." % (veta, len(akce), vzhled, " (i trvale, „vždycky“)" if a.vzdy else "",
                                                              ", ".join(str(c) for c in cesty)),
-             "spusť vzhled znovu: python -m studio vzhled --reel \"%s\" --plan --zoom." % r)
+             "spusť vzhled znovu: STUDIO vzhled --reel \"%s\" --plan --zoom." % r)
     return k.kod()
 
 
@@ -1302,7 +1302,7 @@ def krok_plan(a):
     k = Krok("Plán střihu", s["pracovni"])
     osa_soubor = s["pracovni"] / "casova-osa.json"
     if not osa_soubor.exists():
-        k.cervena("ještě není náhled.", "nejdřív udělej náhled (python -m studio nahled --reel \"%s\")." % r)
+        k.cervena("ještě není náhled.", "nejdřív udělej náhled (STUDIO nahled --reel \"%s\")." % r)
         return k.kod()
     osa = strih.nacti_osu(osa_soubor)
     klipy = projekt.nacti_klipy(r, s_energii=False)
@@ -1353,7 +1353,7 @@ def krok_plan(a):
     k.zelena("%d vět, %d prvků s textem, nadpisů od zákaznice %d, WOW %s, chybí obrázky u %d vět. Plán je v PRACOVNI/plan-strihu.md." % (
         len(radky), sum(1 for x in radky if x["prvek"] not in ("zoom", "chybi_obrazek")), sum(1 for x in radky if x["zdroj"] == "nadpis zákaznice"),
         "ano" if wow else "ne", len(chybi)),
-        "ukaž plán zákaznici; po „jo“ (nebo úpravách v plan-strihu.json) spusť vzhled s plánem: python -m studio vzhled --reel \"%s\" --plan" % r)
+        "ukaž plán zákaznici; po „jo“ (nebo úpravách v plan-strihu.json) spusť vzhled s plánem: STUDIO vzhled --reel \"%s\" --plan" % r)
     _prubeh(r)
     return k.kod()
 
@@ -1367,7 +1367,7 @@ def krok_editor(a):
     k = Krok("Editor přepisu", s["pracovni"])
     osa_soubor = s["pracovni"] / "casova-osa.json"
     if not osa_soubor.exists():
-        k.cervena("ještě není náhled.", "nejdřív udělej náhled (python -m studio nahled --reel \"%s\")." % r)
+        k.cervena("ještě není náhled.", "nejdřív udělej náhled (STUDIO nahled --reel \"%s\")." % r)
         return k.kod()
     osa = strih.nacti_osu(osa_soubor)
     klipy = projekt.nacti_klipy(r, s_energii=False)
@@ -1386,7 +1386,7 @@ def krok_editor(a):
         k.cervena("nic se neuložilo (okno zavřené bez uložení, nebo vypršel čas %d s)." % a.cekat,
                   "spusť editor znovu a klikni na Uložit úpravy. Nebo řekni, co změnit, slovy.")
     else:
-        k.zelena("úpravy uložené: %s" % editor.shrnuti_uprav(u), "nový náhled (python -m studio nahled --reel \"%s\")." % r,
+        k.zelena("úpravy uložené: %s" % editor.shrnuti_uprav(u), "nový náhled (STUDIO nahled --reel \"%s\")." % r,
                  {"upravy": {kk: v for kk, v in u.items() if kk != "texty"}})
     _prubeh(r)
     return k.kod()
@@ -1402,10 +1402,10 @@ def krok_plan_reelu(a):
     k = Krok("Plán reelu", s["pracovni"])
     osa_soubor, soubor_planu = s["pracovni"] / "casova-osa.json", s["pracovni"] / "plan-strihu.json"
     if not osa_soubor.exists():
-        k.cervena("ještě není náhled.", "nejdřív udělej náhled (python -m studio nahled --reel \"%s\")." % r)
+        k.cervena("ještě není náhled.", "nejdřív udělej náhled (STUDIO nahled --reel \"%s\")." % r)
         return k.kod()
     if not soubor_planu.exists():
-        k.cervena("reel ještě nemá plán obrazovky.", "nejdřív spusť plan (python -m studio plan --reel \"%s\")." % r)
+        k.cervena("reel ještě nemá plán obrazovky.", "nejdřív spusť plan (STUDIO plan --reel \"%s\")." % r)
         return k.kod()
     osa = strih.nacti_osu(osa_soubor)
     klipy = projekt.nacti_klipy(r, s_energii=False)
@@ -1447,7 +1447,7 @@ def krok_stav(a):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="python -m studio", description="Claude Reel Studio: kroky etapy A")
+    p = argparse.ArgumentParser(prog="STUDIO", description="Claude Reel Studio: kroky etapy A")
     sub = p.add_subparsers(dest="krok", required=True)
     z = sub.add_parser("zaloz", help="založit složku reelu")
     z.add_argument("--reely", required=True, help="složka Reely (kořen, mimo iCloud a OneDrive)")

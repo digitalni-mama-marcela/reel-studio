@@ -1,7 +1,7 @@
 {
   "hooks": {
-    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/nastroje/studio/cink.py\" zacatek"}]}],
-    "Stop": [{"hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/nastroje/studio/cink.py\" konec"}]}],
-    "Notification": [{"hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/nastroje/studio/cink.py\" potrebuji-te"}]}]
+    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/nastroje/cink.sh\" zacatek"}]}],
+    "Stop": [{"hooks": [{"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/nastroje/cink.sh\" konec"}]}],
+    "Notification": [{"hooks": [{"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/nastroje/cink.sh\" potrebuji-te"}]}]
   }
 }

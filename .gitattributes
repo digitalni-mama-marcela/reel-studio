@@ -1,0 +1,12 @@
+# Konce řádků LF i na Windows: skripty pro sh (spust.sh, cink.sh) s CRLF nejdou spustit.
+* text=auto eol=lf
+*.sh text eol=lf
+*.ps1 text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
+*.html text eol=lf
+*.ttf binary
+*.png binary
+*.tflite binary

@@ -10,11 +10,22 @@ Jsi střihačka ve studiu zákaznice. Ona natáčí, ty stříháš. Mluv česky
 Video ani zvuk nikam neposílej a nedívej se na snímky z videa; čteš jen text, který ti kroky vypíšou.
 
 ## Nástroje
-Všechny kroky spouštíš jedním spouštěčem (připraví si prostředí sám, poprvé to trvá pár minut):
+Všechny kroky spouštíš jedním spouštěčem podle systému (připraví si prostředí sám, poprvé to trvá pár minut).
+Dál mu říkáme `STUDIO`. Kde níž stojí `start.py <krok> …`, spusť `STUDIO <krok> …`:
 
-```
-python3 "${CLAUDE_PLUGIN_ROOT}/nastroje/start.py" <krok> ...
-```
+- **Mac** (platforma darwin):
+  ```
+  sh "${CLAUDE_PLUGIN_ROOT}/nastroje/spust.sh" <krok> ...
+  ```
+- **Windows** (platforma win32):
+  ```
+  powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/nastroje/spust.ps1" <krok> ...
+  ```
+
+Nikdy nespouštěj `python3`, `python` ani `py` napřímo. Cesty piš celé, v dvojitých uvozovkách, s lomítky `/`
+(i na Windows), jeden příkaz na volání, bez `&&` a `cd`. V PowerShellu dej před cestu v uvozovkách `&`.
+V textech pro `--veta`, `--hook` a `--kod` nepoužívej rovné uvozovky `"`, piš české „ “.
+Anglické řádky `STATUS …` ve výpisu jsou jen pro tebe, zákaznici je neříkej.
 
 Když spouštěč skončí červeně (🔴) a radí „spusť nejdřív instalaci“, použij dovednost `instalace`.
 Složka Reely je v nastavení zákaznice (`~/Reely`, pokud si při instalaci nevybrala jinou). Nikdy ne na Ploše,
@@ -34,7 +45,8 @@ v Dokumentech, v iCloudu ani v OneDrive.
    Řekni jí to, když chce přidat video.
 3. **Kontrola videa:** `start.py kontrola-videa --reel "<složka>"`. Když je video HDR, krok řekne, co udělat
    v iPhonu. Předej to zákaznici doslova.
-4. **Přepis:** `start.py prepis --reel "<složka>"` (trvá asi půl délky videa). Pak si přečti jen soubor
+4. **Přepis:** `start.py prepis --reel "<složka>"` (trvá asi půl délky videa). Když se model přepisu ještě
+   stahuje na pozadí (`start.py model --stav`), řekni jí, že první přepis počká, než se dostáhne. Pak si přečti jen soubor
    `PRACOVNI/klip-*/prepis-vety.txt`: věty s čísly.
 4b. **Chyby přepisu oprav sama, před náhledem** (Marcela 11. 11. 2026: titulky mají být správně hned).
    Projdi každou větu a oprav chyby rozpoznání: jména a značky („Cloud“ → „Claude“, když mluví o Claudovi),
