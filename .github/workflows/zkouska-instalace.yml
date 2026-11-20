@@ -57,6 +57,8 @@ jobs:
           grep -q "STATUS uv OK" kontrola.txt
           grep -q "STATUS python OK" kontrola.txt
           grep -q "Diakritika se uloží i přečte správně" kontrola.txt
+          # nic mimo složku studia: žádný python v ~/.local/bin (uv python install --no-bin)
+          if ls "$HOME/.local/bin/" 2>/dev/null | grep -qi python; then echo "python v .local/bin"; exit 1; fi
 
       - name: 2 Priprava (knihovny a ffmpeg)
         run: |
@@ -81,6 +83,22 @@ jobs:
           echo '{}' | sh "$GITHUB_WORKSPACE/nastroje/cink.sh" zacatek
           echo '{}' | sh "$GITHUB_WORKSPACE/nastroje/cink.sh" konec
           echo '{}' | REEL_STUDIO_DATA="$RUNNER_TEMP/prazdne" sh "$GITHUB_WORKSPACE/nastroje/cink.sh" zacatek
+
+      - name: 4b Hook z hooks.json v kazdem shellu (sh, Git Bash, PowerShell bez Gitu) skonci 0
+        run: |
+          export CLAUDE_PLUGIN_ROOT="$GITHUB_WORKSPACE"
+          D=$($STUDIO kde | grep '^Prostředí' | cut -d' ' -f4- | tr -d '\r')
+          PY="$D/venv/bin/python"; [ -f "$PY" ] || PY="$D/venv/Scripts/python.exe"
+          "$PY" -c "import json;[print(h['hooks'][0]['command']) for v in json.load(open('hooks/hooks.json'))['hooks'].values() for h in v]" > prikazy.txt
+          cat prikazy.txt
+          while IFS= read -r c; do
+            echo '{}' | sh -c "$c" 2>sh-chyby.txt; k=$?; echo "sh: $k"; cat sh-chyby.txt; test $k -eq 0
+            if [ "$RUNNER_OS" = Windows ]; then
+              # PowerShell 5.1 jako u zákaznice bez Gitu; ${CLAUDE_PLUGIN_ROOT} Claude Code dosadí předem
+              p="${c//\$\{CLAUDE_PLUGIN_ROOT\}/$GITHUB_WORKSPACE}"
+              echo '{}' | powershell.exe -NoProfile -Command "$p"; k=$?; echo "powershell: $k"; test $k -eq 0
+            fi
+          done < prikazy.txt
 
       - name: 5 Zkusebni video s mluvenym slovem
         run: |
@@ -115,9 +133,46 @@ jobs:
           $STUDIO plan --reel "$R"
           $STUDIO vzhled --reel "$R" --plan --zoom
           ls -la "$R/VYSTUP"
-          $STUDIO model --stav | tee model-konec.txt
-          grep -q "STATUS model turbo: hotovo" model-konec.txt
+          # stahování na pozadí může ještě chvíli dobíhat (přepis si model mezitím vzal), počkat nejvýš 3 minuty
+          for i in $(seq 1 36); do $STUDIO model --stav > model-konec.txt; grep -q "STATUS model turbo: hotovo" model-konec.txt && break; sleep 5; done
+          cat model-konec.txt; grep -q "STATUS model turbo: hotovo" model-konec.txt
           mkdir -p vysledky && cp "$R"/VYSTUP/*.mp4 vysledky/ && cp *.txt vysledky/
+
+      - name: 7 Knihovna stylu (Ulozit -> styl v reelu -> novy vzhled)
+        run: |
+          R=$(tail -1 zaloz.txt | tr -d '\r')
+          $STUDIO knihovna --reel "$R" --bez-prohlizece > knihovna.txt 2>&1 &
+          PID=$!
+          for i in $(seq 1 60); do grep -q "READY" knihovna.txt && break; sleep 2; done
+          cat knihovna.txt
+          ADR=$(grep -o 'http://127.0.0.1:[0-9]*/' knihovna.txt | head -1)
+          curl -fsS -o stranka.html "$ADR"; grep -q "Vyber si svůj styl" stranka.html
+          curl -fsS -o /dev/null "${ADR}pisma/Montserrat-wght.ttf"
+          curl -fsS -o /dev/null -H "Range: bytes=0-99" "${ADR}video/ef-zapisnik.mp4"
+          printf '%s' '{"kod": "styl: vlastní; nadpisy: Montserrat, #FFD43B, nahoře; titulky: Playfair Display, bílé, na hrudi, po jednom slově, 100 %; prvky: Zápisník s odškrtáváním, Karta výzvy; zvuky: Klávesnice, Cink (70 %)", "ulozeno": "2026-11-20T10:00:00Z"}' > vyber.json
+          curl -fsS -H "Content-Type: application/json" --data-binary @vyber.json "${ADR}db?p=data/users/me/pro-reel"
+          wait $PID
+          cat knihovna.txt
+          grep -q "výběr uložený a použitý v reelu" knihovna.txt
+          grep -qi "FFD43B" "$R/PRACOVNI/styl.json"
+          $STUDIO vzhled --reel "$R" --plan --zoom | tail -1
+          cp knihovna.txt vysledky/ || true
+
+      - name: 8 HDR video z iPhonu se prevede samo
+        run: |
+          FF=$($STUDIO kde | grep '^ffmpeg:' | cut -d' ' -f2- | tr -d '\r')
+          "$FF" -y -v error -f lavfi -i "testsrc2=size=1080x1920:rate=30" -f lavfi -i "sine=frequency=300" -t 4 \
+            -vf "format=yuv420p,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv,zscale=t=linear:npl=203,format=gbrpf32le,zscale=p=bt2020:t=arib-std-b67:m=bt2020nc:r=tv,format=yuv420p10le" \
+            -c:v libx265 -x265-params log-level=error -tag:v hvc1 -color_primaries bt2020 -color_trc arib-std-b67 -colorspace bt2020nc \
+            -c:a aac "$RUNNER_TEMP/hdr.mov"
+          $STUDIO zaloz --reely "$REELY" --nazev "HDR" | tee zaloz-hdr.txt
+          R=$(tail -1 zaloz-hdr.txt | tr -d '\r')
+          $STUDIO kopie --reel "$R" "$RUNNER_TEMP/hdr.mov"
+          $STUDIO kontrola-videa --reel "$R" | tee hdr.txt
+          grep -q "Video je v HDR" hdr.txt
+          "$($STUDIO kde | grep '^ffmpeg:' | cut -d' ' -f2- | tr -d '\r' | sed 's/ffmpeg\(\.exe\)\{0,1\}$/ffprobe\1/')" -v error -select_streams v:0 \
+            -show_entries stream=pix_fmt,color_transfer -of csv=p=0 "$R/PRACOVNI/klip-1/video-pripravene.mp4" | tee hdr-vysledek.txt
+          grep -q "yuv420p,bt709" hdr-vysledek.txt
 
       - name: Ulozit vysledky
         if: always()
@@ -126,3 +181,54 @@ jobs:
           name: zkouska-${{ matrix.nazev }}
           path: vysledky
           if-no-files-found: warn
+
+  # Instalace pluginu tak, jak ji dělá Claude u zákaznice, ale na počítači BEZ gitu (Marcela 20. 11. 2026).
+  bez-gitu:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - name: Claude Code (oficiální instalátor)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://claude.ai/install.ps1 | iex
+          "CLAUDE=$env:USERPROFILE\.local\bin\claude.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Claude Code (oficiální instalátor)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "CLAUDE=$HOME/.local/bin/claude" >> "$GITHUB_ENV"
+      - name: Odstranit git (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Rename-Item 'C:\Program Files\Git' 'Git-schovany'
+          if (Get-Command git -ErrorAction SilentlyContinue) { throw 'git je pořád vidět' }
+      - name: Přidat katalog a nainstalovat plugin bez gitu (Windows, PowerShell)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -notmatch 'Git' }) -join ';'
+          $url = "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/.claude-plugin/marketplace.json"
+          & $env:CLAUDE plugin marketplace add $url
+          if ($LASTEXITCODE -ne 0) { throw 'marketplace add selhal' }
+          & $env:CLAUDE plugin install reel-studio@digitalni-mama-marcela --scope user
+          if ($LASTEXITCODE -ne 0) { throw 'install selhal' }
+          & $env:CLAUDE plugin marketplace update digitalni-mama-marcela
+          if ($LASTEXITCODE -ne 0) { throw 'update selhal' }
+          Get-ChildItem "$env:USERPROFILE\.claude\plugins\cache\digitalni-mama-marcela\reel-studio"
+          Get-ChildItem "$env:USERPROFILE\.claude\plugins\cache\digitalni-mama-marcela\reel-studio\*\skills"
+      - name: Přidat katalog a nainstalovat plugin bez gitu (Mac)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          url="https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/.claude-plugin/marketplace.json"
+          env -i HOME="$HOME" PATH=/nonexistent "$CLAUDE" plugin marketplace add "$url"
+          env -i HOME="$HOME" PATH=/nonexistent "$CLAUDE" plugin install reel-studio@digitalni-mama-marcela --scope user
+          env -i HOME="$HOME" PATH=/nonexistent "$CLAUDE" plugin marketplace update digitalni-mama-marcela
+          ls "$HOME/.claude/plugins/cache/digitalni-mama-marcela/reel-studio/"*/skills

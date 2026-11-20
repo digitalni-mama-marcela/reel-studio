@@ -265,6 +265,23 @@ def _rozeber_vynechat(text):
     return out
 
 
+def _rozeber_rezy(text):
+    """„k1:10.92-11.13;k3:21.8-22.1“ -> {0: [(10.92, 11.13)], 2: [(21.8, 22.1)]} (čísla klipů od 1, časy v originálu)."""
+    out = {}
+    for cast in (text or "").split(";"):
+        cast = cast.strip()
+        if not cast:
+            continue
+        klip, _, cas = cast.partition(":")
+        od, _, do = cas.partition("-")
+        c = int(klip.strip().lstrip("kK")) - 1
+        od, do = float(od.replace(",", ".")), float(do.replace(",", "."))
+        if do <= od:
+            raise ValueError("úsek %s končí dřív, než začne" % cast)
+        out.setdefault(c, []).append((od, do))
+    return out
+
+
 def krok_nahled(a):
     from . import kontrola_reelu, render
 
@@ -296,6 +313,19 @@ def krok_nahled(a):
         k.cervena("výběr vět je prázdný.", "vrať aspoň jednu větu (editor) nebo zadej --vyber.")
         return k.kod()
     projekt.uloz_vyber(r, vyber, vynechat, texty)
+    # ruční úseky k vystřižení se pamatují v PRACOVNI/vystrihnout.json; nové --vystrihnout je nahradí celé („“ = žádné)
+    cesta_rezu = s["pracovni"] / "vystrihnout.json"
+    if a.vystrihnout is not None:
+        try:
+            rezy = _rozeber_rezy(a.vystrihnout)
+        except ValueError as e:
+            k.cervena("úseky k vystřižení nejdou přečíst: %s." % e, "zadej je jako k1:10.92-11.13;k3:21.8-22.1 (klip:od-do v sekundách originálu).")
+            return k.kod()
+        projekt.uloz_json(cesta_rezu, {str(c): v for c, v in rezy.items()})
+    else:
+        rezy = {int(c): [tuple(x) for x in v] for c, v in (json.loads(cesta_rezu.read_text()) if cesta_rezu.exists() else {}).items()}
+    if rezy:
+        k.info("Ručně vystřižené úseky: %s." % ", ".join("klip %d %.2f až %.2f s" % (c + 1, od, do) for c, v in sorted(rezy.items()) for od, do in v))
     t = time.time()
     if a.cele:
         vyber = [(c, v["id"]) for c, kl in enumerate(klipy) for v in kl["vety"]]
@@ -303,7 +333,7 @@ def krok_nahled(a):
     vynechat_ticho, hlaseni = strih.rozsir_vynechat_do_ticha(klipy, vyber, vynechat)
     for h in hlaseni:
         k.info(h)
-    osa = strih.osa_cela(klipy, vyber) if a.cele else strih.sestav_osu(klipy, vyber, vynechat=vynechat_ticho or vynechat)
+    osa = strih.osa_cela(klipy, vyber) if a.cele else strih.sestav_osu(klipy, vyber, vynechat=vynechat_ticho or vynechat, rezy=rezy)
     if a.cele:
         k.info("Bez střihu: video celé, %s, nic se nezkracuje." % cas_text(osa["delka"]))
     osa["vynechat_zadano"] = {kk: v for kk, v in vynechat.items() if v}
@@ -1483,6 +1513,10 @@ def krok_stav(a):
 
 
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["knihovna"]:          # knihovna stylů v počítači (studio/knihovna.py), vlastní parametry
+        from . import knihovna
+        return knihovna.main(argv[1:])
     p = argparse.ArgumentParser(prog="STUDIO", description="Claude Reel Studio: kroky etapy A")
     sub = p.add_subparsers(dest="krok", required=True)
     z = sub.add_parser("zaloz", help="založit složku reelu")
@@ -1516,6 +1550,7 @@ def main(argv=None):
     nh.add_argument("--preset", default="fast", help="rychlost kódování ffmpeg (fast pro náhled, medium pro finál)")
     nh.add_argument("--editor", action="store_true", help="hned po náhledu otevřít editor přepisu")
     nh.add_argument("--bez-editoru", action="store_true", help="neotvírat editor, i když to má nastavení zapnuté")
+    nh.add_argument("--vystrihnout", help="úseky k vystřižení podle času originálu: k1:10.92-11.13;k3:21.8-22.1 (přeřek, „mmm“); \"\" = žádné")
     nh.add_argument("--cele", action="store_true", help="bez střihu: celé video tak, jak je natočené (žádné pauzy ani věty pryč)")
     nh.add_argument("--bez-titulku", action="store_true", help="náhled bez titulků (rychlejší, jako dřív)")
     nh.set_defaults(f=krok_nahled)

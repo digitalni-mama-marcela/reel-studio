@@ -4,7 +4,11 @@
 #
 # The computer needs nothing but what Windows ships (PowerShell 5.1, .NET). No Python, no winget, no admin rights,
 # nothing installed system-wide. Everything lands in the studio data folder:
-#   %LOCALAPPDATA%\ClaudeReelStudio                 (REEL_STUDIO_DATA overrides it, for tests)
+#   %USERPROFILE%\.claude-reel-studio               (REEL_STUDIO_DATA overrides it, for tests)
+#   Not in AppData: the Claude app on Windows is a packaged (MSIX) app and Windows silently redirects
+#   its writes to AppData into AppData\Local\Packages\Claude_...\LocalCache. Links uv makes there point to
+#   the place that does not exist (found on a real Windows laptop, 12 Nov 2026). The home folder is not
+#   redirected; Claude Code keeps its own .claude folder there too.
 # What it does:
 #   1. gets the studio its own copy of uv (pinned version, checked against its SHA-256) into <data>\uv
 #   2. uv gets the studio its own Python 3.12 into <data>\python. Always the x64 build: the speech engine has no
@@ -27,9 +31,9 @@ $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 $Data = $env:REEL_STUDIO_DATA
 if (-not $Data) {
-    $Local = $env:LOCALAPPDATA
-    if (-not $Local) { $Local = Join-Path $HOME 'AppData\Local' }
-    $Data = Join-Path $Local 'ClaudeReelStudio'
+    $Home0 = $env:USERPROFILE
+    if (-not $Home0) { $Home0 = $HOME }
+    $Data = Join-Path $Home0 '.claude-reel-studio'
 }
 $UvDir = Join-Path $Data 'uv'
 $Uv = Join-Path $UvDir 'uv.exe'
@@ -122,11 +126,14 @@ $env:PYTHONUTF8 = '1'
 & $Uv python find $PyRequest *> $null
 if ($LASTEXITCODE -ne 0) {
     Write-Output 'STATUS python: getting the studio its own Python 3.12 (about 30 MB, one time)'
-    & $Uv python install $PyRequest *> $null
+    # --no-bin: no python.exe in %USERPROFILE%\.local\bin; --no-registry: nothing in the Windows registry
+    & $Uv python install --no-bin --no-registry $PyRequest *> $null
     if ($LASTEXITCODE -ne 0) {
-        & $Uv python install $PyRequest
+        & $Uv python install --no-bin --no-registry $PyRequest
         if ($LASTEXITCODE -ne 0) { Stop-Missing 'python' 'uv could not download Python 3.12: check the internet connection and run it again' }
     }
+    & $Uv python find $PyRequest *> $null
+    if ($LASTEXITCODE -ne 0) { Stop-Missing 'python' "Python 3.12 was downloaded but cannot be started from $Data. Send this output to Marcela" }
     Write-Output "STATUS python OK (3.12, the studio's own copy)"
 }
 

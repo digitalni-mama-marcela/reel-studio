@@ -12,19 +12,30 @@
 # "/nastroje/cink.sh" with forward slashes, so cutting at the last "/" gives this folder either way.
 HERE=$(cd "${0%/*}" 2>/dev/null && pwd) || exit 0
 
+# Windows (Git Bash): zvuk a hlášky obstará cink.ps1, který hook spouští hned po tomhle (hooks.json). Tady nic.
+case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) exit 0 ;; esac
+
 if [ -n "${REEL_STUDIO_DATA:-}" ]; then
   DATA="$REEL_STUDIO_DATA"
-elif [ -n "${LOCALAPPDATA:-}" ]; then                      # Windows (Git Bash)
-  DATA="$LOCALAPPDATA/ClaudeReelStudio"
+elif [ -n "${USERPROFILE:-}" ]; then                       # Windows (Git Bash), stejně jako spust.ps1
+  DATA="$USERPROFILE/.claude-reel-studio"
 elif [ "$(uname -s)" = Darwin ]; then
   DATA="$HOME/Library/Application Support/ClaudeReelStudio"
 else
   DATA="$HOME/.claude-reel-studio"
 fi
 
+# Git Bash: C:\Users\... na /c/Users/... (cygpath je součást Git for Windows)
+command -v cygpath >/dev/null 2>&1 && DATA=$(cygpath -u "$DATA")
+
 for PY in "$DATA/venv/bin/python" "$DATA/venv/Scripts/python.exe"; do
   if [ -f "$PY" ]; then
-    PYTHONIOENCODING=utf-8 "$PY" "$HERE/studio/cink.py" "$@" >/dev/null 2>&1
+    # zacatek a start smí psát: co vypíšou (hláška o nové verzi, poznámka z kontroly), dostane Claude jako poznámku
+    if [ "${1:-}" = zacatek ] || [ "${1:-}" = start ]; then
+      REEL_STUDIO_DATA="$DATA" PYTHONIOENCODING=utf-8 "$PY" "$HERE/studio/cink.py" "$@" 2>/dev/null
+    else
+      REEL_STUDIO_DATA="$DATA" PYTHONIOENCODING=utf-8 "$PY" "$HERE/studio/cink.py" "$@" >/dev/null 2>&1
+    fi
     exit 0
   fi
 done

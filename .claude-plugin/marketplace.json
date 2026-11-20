@@ -1,12 +1,19 @@
 {
   "name": "digitalni-mama-marcela",
-  "owner": {"name": "Marcela Kamenická (Digitální Máma Marcela)"},
+  "owner": {
+    "name": "Marcela Kamenická (Digitální Máma Marcela)"
+  },
   "description": "Nástroje Digitální Mámy Marcely pro Claude Code.",
   "plugins": [
     {
       "name": "reel-studio",
-      "source": "./",
-      "description": "Z natočeného mluvícího videa udělá sestříhaný reel (střih, titulky, hook), česky, všechno na tvém počítači."
+      "source": {
+        "source": "archive",
+        "url": "https://github.com/digitalni-mama-marcela/reel-studio/releases/download/v0.4.202611201125/reel-studio-0.4.202611201125.zip",
+        "sha256": "09c2190900944a5f2020012cc6d73a28aae385f11f40fcc2dbefebde1048ef7e"
+      },
+      "description": "Z natočeného mluvícího videa udělá sestříhaný reel (střih, titulky, hook), česky, všechno na tvém počítači.",
+      "version": "0.4.202611201125"
     }
   ]
 }

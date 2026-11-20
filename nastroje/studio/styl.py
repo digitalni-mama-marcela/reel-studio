@@ -1,4 +1,4 @@
-"""Kód stylu z knihovny stylů Marcely („Vyber si svůj styl“, https://claude.ai/artifact/7waF2A4cLZ6AqDNKisjyzN)
+"""Kód stylu z knihovny stylů Marcely („Vyber si svůj styl“, od 20. 11. 2026 v pluginu: nastroje/knihovna, studio/knihovna.py)
 a obyčejné věty zákaznice, které styl reelu mění.
 
 Kód stylu je jedna věta, kterou stránka dává zákaznici ke zkopírování (verze 16, 3. 11. 2026):
