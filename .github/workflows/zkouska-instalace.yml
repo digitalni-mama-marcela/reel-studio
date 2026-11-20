@@ -133,8 +133,9 @@ jobs:
           $STUDIO plan --reel "$R"
           $STUDIO vzhled --reel "$R" --plan --zoom
           ls -la "$R/VYSTUP"
-          $STUDIO model --stav | tee model-konec.txt
-          grep -q "STATUS model turbo: hotovo" model-konec.txt
+          # stahování na pozadí může ještě chvíli dobíhat (přepis si model mezitím vzal), počkat nejvýš 3 minuty
+          for i in $(seq 1 36); do $STUDIO model --stav > model-konec.txt; grep -q "STATUS model turbo: hotovo" model-konec.txt && break; sleep 5; done
+          cat model-konec.txt; grep -q "STATUS model turbo: hotovo" model-konec.txt
           mkdir -p vysledky && cp "$R"/VYSTUP/*.mp4 vysledky/ && cp *.txt vysledky/
 
       - name: Ulozit vysledky
