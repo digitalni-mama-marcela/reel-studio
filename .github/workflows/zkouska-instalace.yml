@@ -146,7 +146,7 @@ jobs:
           for i in $(seq 1 60); do grep -q "READY" knihovna.txt && break; sleep 2; done
           cat knihovna.txt
           ADR=$(grep -o 'http://127.0.0.1:[0-9]*/' knihovna.txt | head -1)
-          curl -fsS "$ADR" | grep -q "Vyber si svůj styl"
+          curl -fsS -o stranka.html "$ADR"; grep -q "Vyber si svůj styl" stranka.html
           curl -fsS -o /dev/null "${ADR}pisma/Montserrat-wght.ttf"
           curl -fsS -o /dev/null -H "Range: bytes=0-99" "${ADR}video/ef-zapisnik.mp4"
           printf '%s' '{"kod": "styl: vlastní; nadpisy: Montserrat, #FFD43B, nahoře; titulky: Playfair Display, bílé, na hrudi, po jednom slově, 100 %; prvky: Zápisník s odškrtáváním, Karta výzvy; zvuky: Klávesnice, Cink (70 %)", "ulozeno": "2026-11-20T10:00:00Z"}' > vyber.json
