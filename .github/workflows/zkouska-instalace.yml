@@ -144,3 +144,54 @@ jobs:
           name: zkouska-${{ matrix.nazev }}
           path: vysledky
           if-no-files-found: warn
+
+  # Instalace pluginu tak, jak ji dělá Claude u zákaznice, ale na počítači BEZ gitu (Marcela 20. 11. 2026).
+  bez-gitu:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - name: Claude Code (oficiální instalátor)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://claude.ai/install.ps1 | iex
+          "CLAUDE=$env:USERPROFILE\.local\bin\claude.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Claude Code (oficiální instalátor)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "CLAUDE=$HOME/.local/bin/claude" >> "$GITHUB_ENV"
+      - name: Odstranit git (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Rename-Item 'C:\Program Files\Git' 'Git-schovany'
+          if (Get-Command git -ErrorAction SilentlyContinue) { throw 'git je pořád vidět' }
+      - name: Přidat katalog a nainstalovat plugin bez gitu (Windows, PowerShell)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -notmatch 'Git' }) -join ';'
+          $url = "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/.claude-plugin/marketplace.json"
+          & $env:CLAUDE plugin marketplace add $url
+          if ($LASTEXITCODE -ne 0) { throw 'marketplace add selhal' }
+          & $env:CLAUDE plugin install reel-studio@digitalni-mama-marcela --scope user
+          if ($LASTEXITCODE -ne 0) { throw 'install selhal' }
+          & $env:CLAUDE plugin marketplace update digitalni-mama-marcela
+          if ($LASTEXITCODE -ne 0) { throw 'update selhal' }
+          Get-ChildItem "$env:USERPROFILE\.claude\plugins\cache\digitalni-mama-marcela\reel-studio"
+          Get-ChildItem "$env:USERPROFILE\.claude\plugins\cache\digitalni-mama-marcela\reel-studio\*\skills"
+      - name: Přidat katalog a nainstalovat plugin bez gitu (Mac)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          url="https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/.claude-plugin/marketplace.json"
+          env -i HOME="$HOME" PATH=/nonexistent "$CLAUDE" plugin marketplace add "$url"
+          env -i HOME="$HOME" PATH=/nonexistent "$CLAUDE" plugin install reel-studio@digitalni-mama-marcela --scope user
+          env -i HOME="$HOME" PATH=/nonexistent "$CLAUDE" plugin marketplace update digitalni-mama-marcela
+          ls "$HOME/.claude/plugins/cache/digitalni-mama-marcela/reel-studio/"*/skills
