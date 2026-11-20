@@ -84,6 +84,22 @@ jobs:
           echo '{}' | sh "$GITHUB_WORKSPACE/nastroje/cink.sh" konec
           echo '{}' | REEL_STUDIO_DATA="$RUNNER_TEMP/prazdne" sh "$GITHUB_WORKSPACE/nastroje/cink.sh" zacatek
 
+      - name: 4b Hook z hooks.json v kazdem shellu (sh, Git Bash, PowerShell bez Gitu) skonci 0
+        run: |
+          export CLAUDE_PLUGIN_ROOT="$GITHUB_WORKSPACE"
+          D=$($STUDIO kde | grep '^Prostředí' | cut -d' ' -f4- | tr -d '\r')
+          PY="$D/venv/bin/python"; [ -f "$PY" ] || PY="$D/venv/Scripts/python.exe"
+          "$PY" -c "import json;[print(h['hooks'][0]['command']) for v in json.load(open('hooks/hooks.json'))['hooks'].values() for h in v]" > prikazy.txt
+          cat prikazy.txt
+          while IFS= read -r c; do
+            echo '{}' | sh -c "$c" 2>sh-chyby.txt; k=$?; echo "sh: $k"; cat sh-chyby.txt; test $k -eq 0
+            if [ "$RUNNER_OS" = Windows ]; then
+              # PowerShell 5.1 jako u zákaznice bez Gitu; ${CLAUDE_PLUGIN_ROOT} Claude Code dosadí předem
+              p="${c//\$\{CLAUDE_PLUGIN_ROOT\}/$GITHUB_WORKSPACE}"
+              echo '{}' | powershell.exe -NoProfile -Command "$p"; k=$?; echo "powershell: $k"; test $k -eq 0
+            fi
+          done < prikazy.txt
+
       - name: 5 Zkusebni video s mluvenym slovem
         run: |
           FF=$($STUDIO kde | grep '^ffmpeg:' | cut -d' ' -f2- | tr -d '\r')

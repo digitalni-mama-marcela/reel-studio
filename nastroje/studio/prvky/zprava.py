@@ -156,6 +156,9 @@ def pripravit(spec, styl, kontext):
     okno = kontext.get("okno")
     x, w, h = spec["x"], r["w"], r["h"]
     spec.pop("varovani", None)
+    if spec.get("y_zadane") is not None:      # pevná poloha z plánu (18. 11. 2026: na hrudi, když hlava sahá k hornímu okraji)
+        spec["y"] = int(spec["y_zadane"])
+        return
     y_nahore = horni + 20
     if not okno or not _protina((x, y_nahore, x + w, y_nahore + h), okno):
         spec["y"] = int(y_nahore)
