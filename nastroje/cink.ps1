@@ -20,8 +20,8 @@ try {
         $env:REEL_STUDIO_DATA = $Data
         $env:PYTHONIOENCODING = 'utf-8'
         $Skript = Join-Path $Here 'studio\cink.py'
-        if ($Druh -eq 'zacatek') {
-            # only "zacatek" may print: a notice about a new studio version, Claude gets it as a note
+        if ($Druh -eq 'zacatek' -or $Druh -eq 'start') {
+            # only these may print: a notice about a new version or a check result, Claude gets it as a note
             & $Py $Skript $Druh 2>$null
         } else {
             & $Py $Skript $Druh *> $null

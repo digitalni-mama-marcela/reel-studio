@@ -30,8 +30,8 @@ command -v cygpath >/dev/null 2>&1 && DATA=$(cygpath -u "$DATA")
 
 for PY in "$DATA/venv/bin/python" "$DATA/venv/Scripts/python.exe"; do
   if [ -f "$PY" ]; then
-    # zacatek smí psát: co vypíše (jen hláška o nové verzi studia), dostane Claude jako poznámku k zprávě zákaznice
-    if [ "${1:-}" = zacatek ]; then
+    # zacatek a start smí psát: co vypíšou (hláška o nové verzi, poznámka z kontroly), dostane Claude jako poznámku
+    if [ "${1:-}" = zacatek ] || [ "${1:-}" = start ]; then
       REEL_STUDIO_DATA="$DATA" PYTHONIOENCODING=utf-8 "$PY" "$HERE/studio/cink.py" "$@" 2>/dev/null
     else
       REEL_STUDIO_DATA="$DATA" PYTHONIOENCODING=utf-8 "$PY" "$HERE/studio/cink.py" "$@" >/dev/null 2>&1

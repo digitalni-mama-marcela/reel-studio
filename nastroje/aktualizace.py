@@ -4,12 +4,13 @@ Claude Code u pluginů od jiných autorů aktualizace samo nezapíná. Podle dok
 plugins/loading, ověřeno 9. 11. 2026) rozhoduje nejdřív `autoUpdate` u marketplace v `extraKnownMarketplaces`
 v souboru nastavení. Tenhle krok ho zapíše do ~/.claude/settings.json (zdroj vezme z known_marketplaces.json,
 kam ho zapsala instalace pluginu). Před změnou udělá zálohu settings.json.zaloha-studio. Nic jiného nemění.
-Zda Claude Code `autoUpdate` v uživatelském nastavení opravdu použije: NEOVĚŘENO, zkouší se s GitHubem.
+Že to Claude Code použije: OVĚŘENO (dokumentace a Mac Marcely 20. 11. 2026, katalog se sám obnovil).
 
 Spuštění: python3 aktualizace.py [--marketplace digitalni-mama-marcela]
 """
 import argparse
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -43,7 +44,9 @@ def main(argv=None):
     ap.add_argument("--marketplace", default=MARKETPLACE)
     ap.add_argument("--domov", default=str(Path.home()), help="jen pro zkoušky")
     a = ap.parse_args(argv)
-    claude = Path(a.domov) / ".claude"
+    # CLAUDE_CONFIG_DIR: Claude Code s jinou složkou nastavení (zkoušky, firemní počítače)
+    claude = Path(os.environ["CLAUDE_CONFIG_DIR"]) if os.environ.get("CLAUDE_CONFIG_DIR") and a.domov == str(Path.home()) \
+        else Path(a.domov) / ".claude"
     known_soubor = claude / "plugins" / "known_marketplaces.json"
     settings_soubor = claude / "settings.json"
     try:

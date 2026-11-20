@@ -6,6 +6,7 @@ Příkazy:
   zacatek        zapíše čas, kdy zákaznice zadala úkol; když se studio aktualizovalo, vypíše pro Clauda hlášku
   konec          zahraje "hotovo" jen když od zápisu uplynulo víc než LIMIT_SEKUND
   zkouska        zahraje oba zvuky za sebou
+  start          tichá kontrola při otevření chatu (studio/start_relace.py), vypíše jen to, co je potřeba řešit
 
 Mac: systémové zvuky z /System/Library/Sounds (OVĚŘENO, že existují).
 Windows: větev je napsaná, ale NEBYLA vyzkoušena (test T10). Když zvuk nejde, ozve se aspoň pípnutí terminálu.
@@ -185,12 +186,22 @@ def main(argv=None):
             print(text)
     elif prikaz == "konec":
         konec()
+    elif prikaz == "start":
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+            from studio import start_relace
+            koren = koren_pluginu()
+            text = start_relace.main(verze=bezici_verze(koren) if koren else None)
+        except Exception:           # kontrola nikdy nesmí shodit otevření chatu
+            text = None
+        if text:
+            print(text)
     elif prikaz == "zkouska":
         prehraj("potrebuji-te")
         time.sleep(1)
         prehraj("hotovo")
     else:
-        sys.stderr.write("Použití: cink.py hotovo | potrebuji-te | zacatek | konec | zkouska\n")
+        sys.stderr.write("Použití: cink.py hotovo | potrebuji-te | zacatek | konec | start | zkouska\n")
         return 2
     return 0
 
