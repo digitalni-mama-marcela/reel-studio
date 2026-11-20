@@ -18,6 +18,7 @@ Kroky navíc (běží bez prostředí studia):
   kontrola     kontrola počítače (stejné parametry jako studio/kontrola_pocitace.py)
   aktualizace  zapne automatické aktualizace pluginu (aktualizace.py)
   cink         zvuk (studio/cink.py)
+  knihovna     knihovna stylů v prohlížeči (studio/knihovna.py), uložení výběru použije styl v reelu sám
   model        stáhne model přepisu (asi 1,6 GB). --na-pozadi: stahuje dál sám, Claude hned pokračuje.
                --stav: jen řekne, jestli je stažený, nebo se stahuje.
   kde          vypíše cesty
@@ -67,6 +68,12 @@ FFMPEG_ZDROJE = {
          {"bin/ffmpeg.exe": "ffmpeg.exe", "bin/ffprobe.exe": "ffprobe.exe"}),
     ],
 }
+# Ukázková videa knihovny stylů (Marcela 20. 11. 2026). Nejsou v pluginu, aby aktualizace zůstaly malé (ZIP pluginu
+# 2,5 MB). Stáhnou se jednou do složky studia; nová sada = nová "verze" tady, staré se nechají být.
+UKAZKY = {"verze": "1", "velikost": "asi 21 MB",
+          "url": "https://github.com/digitalni-mama-marcela/reel-studio/releases/download/ukazky-1/ukazky-1.zip",
+          "sha256": "d32eed06fb1c34571330f47fc0a043bebae9ce3dc282cb72bb925574adb45c69"}
+
 VELIKOST_FFMPEG = {"mac-arm64": "asi 55 MB", "mac-x86_64": "asi 60 MB", "windows-x64": "asi 115 MB"}
 
 # Knihovny, které musí jít načíst, jinak studio nepoběží (maska je volitelná, viz pozadavky.txt).
@@ -299,6 +306,43 @@ def priprav_ffmpeg(tise=False):
     return stahni_ffmpeg(druh)
 
 
+def slozka_ukazek():
+    return slozka_dat() / "ukazky" / UKAZKY["verze"]
+
+
+def priprav_ukazky(tise=False):
+    """Stáhne ukázková videa knihovny stylů (jednou). Vrátí (ok, zpráva). Chyba nevadí: knihovna jde i bez videí."""
+    cil = slozka_ukazek()
+    if (cil / ".hotovo").is_file():
+        return True, "Ukázky knihovny stylů jsou připravené."
+    if not tise:
+        print("⏳ Stahuju ukázky pro knihovnu stylů (%s, jednou)." % UKAZKY["velikost"], flush=True)
+    docasna = cil.with_name(cil.name + ".stahovani")
+    shutil.rmtree(docasna, ignore_errors=True)
+    docasna.mkdir(parents=True, exist_ok=True)
+    try:
+        archiv = docasna / "ukazky.zip"
+        if not stahni(UKAZKY["url"], archiv):
+            return False, "Ukázky knihovny se nepodařilo stáhnout. Knihovna půjde i bez nich, zkusím to příště znovu."
+        if sha256(archiv) != UKAZKY["sha256"]:
+            return False, "Stažené ukázky neprošly kontrolním součtem, nepoužila jsem je. Zkusím to příště znovu."
+        with zipfile.ZipFile(archiv) as z:
+            for clen in z.namelist():
+                jmeno = Path(clen).name
+                if jmeno and not clen.endswith("/"):
+                    with z.open(clen) as zdroj, open(docasna / jmeno, "wb") as vystup:
+                        shutil.copyfileobj(zdroj, vystup, 1024 * 1024)
+        archiv.unlink()
+        (docasna / ".hotovo").write_text(UKAZKY["sha256"], encoding="utf-8")
+        shutil.rmtree(cil, ignore_errors=True)
+        os.replace(str(docasna), str(cil))
+        return True, "Ukázky knihovny stylů jsou připravené."
+    except (OSError, zipfile.BadZipFile) as e:
+        return False, "Ukázky knihovny se nepodařilo rozbalit (%s). Zkusím to příště znovu." % e
+    finally:
+        shutil.rmtree(docasna, ignore_errors=True)
+
+
 def prostredi():
     env = dict(os.environ)
     data = slozka_dat()
@@ -307,6 +351,8 @@ def prostredi():
     env["PYTHONPATH"] = str(TADY) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     env["PYTHONIOENCODING"] = "utf-8"
     env["REEL_STUDIO_DATA"] = str(data)
+    if (slozka_ukazek() / ".hotovo").is_file():
+        env["REEL_STUDIO_UKAZKY"] = str(slozka_ukazek())
     if vlastni_ffmpeg()[0].exists():                          # vlastní ffmpeg má přednost před systémovým
         env["PATH"] = str(slozka_ffmpeg()) + os.pathsep + env.get("PATH", "")
     return env
@@ -437,6 +483,9 @@ def main(argv):
             print(("✅ " if ok else "🔴 ") + zprava)
             zpravy.append((ok, zprava))
         if ok:
+            u_ok, u_zprava = priprav_ukazky()
+            print(("✅ " if u_ok else "ℹ️ ") + u_zprava)
+        if ok:
             print("✅ Příprava prostředí: hotovo.")
         elif not any("Udělej:" in z for _, z in zpravy):
             print("🔴 Příprava prostředí se nepovedla. Udělej: spusť přípravu znovu. Když to skončí stejně, "
@@ -448,6 +497,10 @@ def main(argv):
         return 1
     if argv[0] == "model":
         return model(py, argv[1:])
+    if argv[0] == "knihovna":
+        u_ok, u_zprava = priprav_ukazky()
+        if not u_ok:
+            print("ℹ️ " + u_zprava, flush=True)
     cmd = [str(py), "-m", "studio"] + argv
     return subprocess.call(cmd, env=prostredi())   # pracovní složka zůstává, relativní cesty zákaznice platí
 

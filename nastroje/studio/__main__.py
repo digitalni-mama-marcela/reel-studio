@@ -1513,6 +1513,10 @@ def krok_stav(a):
 
 
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["knihovna"]:          # knihovna stylů v počítači (studio/knihovna.py), vlastní parametry
+        from . import knihovna
+        return knihovna.main(argv[1:])
     p = argparse.ArgumentParser(prog="STUDIO", description="Claude Reel Studio: kroky etapy A")
     sub = p.add_subparsers(dest="krok", required=True)
     z = sub.add_parser("zaloz", help="založit složku reelu")

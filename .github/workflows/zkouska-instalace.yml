@@ -138,6 +138,42 @@ jobs:
           cat model-konec.txt; grep -q "STATUS model turbo: hotovo" model-konec.txt
           mkdir -p vysledky && cp "$R"/VYSTUP/*.mp4 vysledky/ && cp *.txt vysledky/
 
+      - name: 7 Knihovna stylu (Ulozit -> styl v reelu -> novy vzhled)
+        run: |
+          R=$(tail -1 zaloz.txt | tr -d '\r')
+          $STUDIO knihovna --reel "$R" --bez-prohlizece > knihovna.txt 2>&1 &
+          PID=$!
+          for i in $(seq 1 60); do grep -q "READY" knihovna.txt && break; sleep 2; done
+          cat knihovna.txt
+          ADR=$(grep -o 'http://127.0.0.1:[0-9]*/' knihovna.txt | head -1)
+          curl -fsS "$ADR" | grep -q "Vyber si svůj styl"
+          curl -fsS -o /dev/null "${ADR}pisma/Montserrat-wght.ttf"
+          curl -fsS -o /dev/null -H "Range: bytes=0-99" "${ADR}video/ef-zapisnik.mp4"
+          printf '%s' '{"kod": "styl: vlastní; nadpisy: Montserrat, #FFD43B, nahoře; titulky: Playfair Display, bílé, na hrudi, po jednom slově, 100 %; prvky: Zápisník s odškrtáváním, Karta výzvy; zvuky: Klávesnice, Cink (70 %)", "ulozeno": "2026-11-20T10:00:00Z"}' > vyber.json
+          curl -fsS -H "Content-Type: application/json" --data-binary @vyber.json "${ADR}db?p=data/users/me/pro-reel"
+          wait $PID
+          cat knihovna.txt
+          grep -q "výběr uložený a použitý v reelu" knihovna.txt
+          grep -qi "FFD43B" "$R/PRACOVNI/styl.json"
+          $STUDIO vzhled --reel "$R" --plan --zoom | tail -1
+          cp knihovna.txt vysledky/ || true
+
+      - name: 8 HDR video z iPhonu se prevede samo
+        run: |
+          FF=$($STUDIO kde | grep '^ffmpeg:' | cut -d' ' -f2- | tr -d '\r')
+          "$FF" -y -v error -f lavfi -i "testsrc2=size=1080x1920:rate=30" -f lavfi -i "sine=frequency=300" -t 4 \
+            -vf "zscale=t=linear:npl=203:pin=bt709:tin=bt709:min=bt709,format=gbrpf32le,zscale=p=bt2020:t=arib-std-b67:m=bt2020nc:r=tv,format=yuv420p10le" \
+            -c:v libx265 -x265-params log-level=error -tag:v hvc1 -color_primaries bt2020 -color_trc arib-std-b67 -colorspace bt2020nc \
+            -c:a aac "$RUNNER_TEMP/hdr.mov"
+          $STUDIO zaloz --reely "$REELY" --nazev "HDR" | tee zaloz-hdr.txt
+          R=$(tail -1 zaloz-hdr.txt | tr -d '\r')
+          $STUDIO kopie --reel "$R" "$RUNNER_TEMP/hdr.mov"
+          $STUDIO kontrola-videa --reel "$R" | tee hdr.txt
+          grep -q "Video je v HDR" hdr.txt
+          "$($STUDIO kde | grep '^ffmpeg:' | cut -d' ' -f2- | tr -d '\r' | sed 's/ffmpeg\(\.exe\)\{0,1\}$/ffprobe\1/')" -v error -select_streams v:0 \
+            -show_entries stream=pix_fmt,color_transfer -of csv=p=0 "$R/PRACOVNI/klip-1/video-pripravene.mp4" | tee hdr-vysledek.txt
+          grep -q "yuv420p,bt709" hdr-vysledek.txt
+
       - name: Ulozit vysledky
         if: always()
         uses: actions/upload-artifact@v4

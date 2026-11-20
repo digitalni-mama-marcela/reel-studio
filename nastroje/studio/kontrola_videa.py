@@ -3,9 +3,12 @@
 Výstup: kontrola-videa.json a jedna česká řádka. Když je potřeba, připraví pracovní kopii
 (video-pripravene.mp4): stálá snímkovost 30, nejvýš 1080x1920, H.264, zvuk AAC. Originál se nemění.
 
-HDR: tvůj ffmpeg z Homebrew nemá filtr zscale ani libplacebo (OVĚŘENO 14. 10. 2026), takže HDR video
-umíme jen poznat, ne převést. Krok skončí červeně a poradí, jak natočit bez HDR. NEOVĚŘENO, zda iPhone
-zákaznic HDR posílá (test T6).
+HDR (Marcela 20. 11. 2026: převést samo, jen to oznámit): video z iPhonu v HDR (HLG, BT.2020, 10 bit) se v pracovní
+kopii převede na běžné barvy filtrem zscale + tonemap hable (vlastní ffmpeg studia ho má: Martin Riedl a gyan.dev
+9.0.2 s knihovnou zimg, OVĚŘENO). Změřeno na videu Marcely IMG_9544 (iPhone, HLG + Dolby Vision, 4K 60 snímků,
+13,6 s) proti převodu Applu (avconvert): podobnost SSIM 0,984, sytost 9,4 proti 8,9, jas 159 proti 161. Bez převodu
+by barvy vyšly o polovinu méně syté. Pracovní kopie se u 4K videa dělá i bez HDR, převod ji prodlouží asi o 30 %.
+Když ffmpeg zscale nemá, krok skončí červeně jako dřív.
 """
 import json
 import subprocess
@@ -16,6 +19,26 @@ from pathlib import Path
 FPS_CIL = 30
 SIRKA_CIL, VYSKA_CIL = 1080, 1920
 HDR_PRENOSY = {"smpte2084", "arib-std-b67", "smpte428", "bt2020-10", "bt2020-12"}
+_ZSCALE = {}
+
+
+def umi_hdr():
+    """Má ffmpeg filtry zscale a tonemap? (vlastní ffmpeg studia ano)"""
+    if "ano" not in _ZSCALE:
+        try:
+            out = subprocess.run(["ffmpeg", "-hide_banner", "-filters"], capture_output=True, text=True, timeout=30).stdout
+            _ZSCALE["ano"] = " zscale " in out and " tonemap " in out
+        except (OSError, subprocess.SubprocessError):
+            _ZSCALE["ano"] = False
+    return _ZSCALE["ano"]
+
+
+def filtr_hdr(v):
+    """Převod HDR -> běžné barvy BT.709 (tonemap hable, OVĚŘENO proti Applu). HLG z iPhonu: bílá 203 nitů."""
+    prenos = v.get("prenos") if v.get("prenos") in ("arib-std-b67", "smpte2084") else "arib-std-b67"
+    npl = 203 if prenos == "arib-std-b67" else 100
+    return ("zscale=tin=%s:pin=bt2020:min=bt2020nc:t=linear:npl=%d,format=gbrpf32le,zscale=p=bt709,"
+            "tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p" % (prenos, npl))
 MIN_DELKA_S = 3.0
 
 
@@ -96,11 +119,13 @@ def posud(info):
     if not info["zvuk"]:
         return False, [("cervena", "Video nemá zvukovou stopu, není co přepsat.")], False, \
             "Zkontroluj, že je v telefonu zapnutý mikrofon, a natoč znovu."
-    if v["hdr"]:
-        return False, [("cervena", "Video je HDR (%s). Po střihu by měly barvy vybledlé." % (v["prenos"] or v["pix_fmt"]))], \
-            False, ("Převod HDR zatím neumíme. V iPhonu vypni Nastavení > Kamera > Nahrát video > HDR video "
-                    "a natoč znovu, nebo video exportuj z Fotek jako 'Nejkompatibilnější'.")
     pripravit = False
+    if v["hdr"]:
+        if not umi_hdr():
+            return False, [("cervena", "Video je HDR (%s). Po střihu by měly barvy vybledlé." % (v["prenos"] or v["pix_fmt"]))], \
+                False, ("Spusť přípravu studia (STUDIO priprava): stáhne ffmpeg, který HDR převést umí. Pak tenhle krok znovu.")
+        zpravy.append(("info", "Video je v HDR (barvy z iPhonu). Převedu ho na běžné barvy, originál zůstane, jak je."))
+        pripravit = True
     zpravy.append(("ok", "%s, %dx%d, %.2f snímků/s, %s, zvuk %s %d Hz." % (
         v["kodek"].upper(), v["sirka"], v["vyska"], v["fps_prumer"] or v["fps"], "na výšku" if v["na_vysku"] else "NA ŠÍŘKU",
         info["zvuk"]["kodek"], info["zvuk"]["vzorkovani"])))
@@ -129,9 +154,13 @@ def priprav_kopii(zdroj, cil, info, log=None):
         filtry.append("scale=%d:-2" % SIRKA_CIL)
     elif v["sirka"] > SIRKA_CIL:
         filtry.append("scale=%d:-2" % SIRKA_CIL)
+    barvy = []
+    if v.get("hdr"):
+        filtry.append(filtr_hdr(v))      # nejdřív zmenšit (rychlejší), pak převést barvy
+        barvy = ["-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709"]
     cmd = ["ffmpeg", "-y", "-v", "error", "-nostdin", "-i", str(zdroj), "-vf", ",".join(filtry),
            "-fps_mode", "cfr", "-r", str(FPS_CIL), "-c:v", "libx264", "-preset", "fast", "-crf", "16",
-           "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "256k", "-ar", "48000", "-movflags", "+faststart", str(cil)]
+           "-pix_fmt", "yuv420p", *barvy, "-c:a", "aac", "-b:a", "256k", "-ar", "48000", "-movflags", "+faststart", str(cil)]
     p = subprocess.run(cmd, capture_output=True, text=True)
     if p.returncode != 0 or not Path(cil).exists():
         return False, (p.stderr or "").strip()[-400:]

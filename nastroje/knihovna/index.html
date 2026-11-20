@@ -1,0 +1,907 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Vyber si svůj styl</title>
+<script>
+/* Reel Studio, místní knihovna (Marcela 20. 11. 2026): stránka běží v počítači zákaznice (server studio/knihovna.py).
+   Místo databáze artefaktu na claude.ai se ukládá do složky Reely přes server. Uložení výběru pro reel rovnou
+   použije styl v reelu, zákaznice nic nekopíruje ani nepíše. */
+(function () {
+  const dotaz = (p, volby) => fetch("/db?p=" + encodeURIComponent(p), volby).then(async r => {
+    if (!r.ok) throw new Error(await r.text()); return r.json(); });
+  const DB = { doc: (p) => ({
+    set: (v) => dotaz(p, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(v) }),
+    get: () => dotaz(p).then(j => ({ exists: j !== null, data: () => j })) }) };
+  window.claude = { use: async (n) => n === "db" ? DB : n === "user" ? { id: async () => "me", isOwner: async () => false } : null };
+  window.addEventListener("pagehide", () => { try { navigator.sendBeacon("/zavreno"); } catch (e) {} });
+})();
+</script>
+
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>/* písma z pluginu (složka pisma), knihovna funguje i bez internetu */
+@font-face{font-family:"Playfair Display";src:url("pisma/PlayfairDisplay-wght.ttf") format("truetype");font-style:normal;font-weight:400 900;font-display:swap}
+@font-face{font-family:"Montserrat";src:url("pisma/Montserrat-wght.ttf") format("truetype");font-style:normal;font-weight:100 900;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url("pisma/InstrumentSerif-Regular.ttf") format("truetype");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url("pisma/InstrumentSerif-Italic.ttf") format("truetype");font-style:italic;font-weight:400;font-display:swap}
+@font-face{font-family:"Mulish";src:url("pisma/Mulish-wght.ttf") format("truetype");font-style:normal;font-weight:200 1000;font-display:swap}
+@font-face{font-family:"Bodoni Moda";src:url("pisma/BodoniModa-wght.ttf") format("truetype");font-style:normal;font-weight:400 900;font-display:swap}
+@font-face{font-family:"DM Serif Display";src:url("pisma/DMSerifDisplay-Regular.ttf") format("truetype");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:"Fraunces";src:url("pisma/Fraunces-wght.ttf") format("truetype");font-style:normal;font-weight:100 900;font-display:swap}
+@font-face{font-family:"Inter";src:url("pisma/Inter-wght.ttf") format("truetype");font-style:normal;font-weight:100 900;font-display:swap}
+@font-face{font-family:"DM Sans";src:url("pisma/DMSans-wght.ttf") format("truetype");font-style:normal;font-weight:100 1000;font-display:swap}
+@font-face{font-family:"Courier Prime";src:url("pisma/CourierPrime-Regular.ttf") format("truetype");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:"Courier Prime";src:url("pisma/CourierPrime-Bold.ttf") format("truetype");font-style:normal;font-weight:700;font-display:swap}
+</style>
+<style>
+/* Rozložení podle vzoru Marcely (2. 11. 2026): vlevo přilepený telefon s tvým videem a živým náhledem,
+   vpravo panely voleb ve dvou sloupcích, dole přepis „slovo → událost“ a časová osa zvuků.
+   Barvy a písma značky Digitální Máma Marcela (krém, švestková, pudrově růžová, Playfair Display, Montserrat). */
+:root {
+  --bg: #FBF6EF; --panel: #FFFFFF; --panel-2: #F6EFE6; --fg: #4A3340; --fg-2: #85707C; --linka: #EADDD8;
+  --akcent: #D48BA0; --akcent-2: #F5D6D9; --tmava: #3A2836; --na-tmave: #FBF6EF; --zvyr: #4A3340;
+  --display: "Playfair Display", Georgia, serif; --body: Montserrat, "Helvetica Neue", Arial, sans-serif;
+  --kurziva: "Instrument Serif", "Playfair Display", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #241A21; --panel: #30232C; --panel-2: #3A2B35; --fg: #F6EEE8; --fg-2: #C2AFBA; --linka: #4D3A46;
+  --akcent: #E39DB2; --akcent-2: #5A3744; --tmava: #17101A; --na-tmave: #F6EEE8; --zvyr: #F6EEE8; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #241A21; --panel: #30232C; --panel-2: #3A2B35; --fg: #F6EEE8; --fg-2: #C2AFBA; --linka: #4D3A46;
+  --akcent: #E39DB2; --akcent-2: #5A3744; --tmava: #17101A; --na-tmave: #F6EEE8; --zvyr: #F6EEE8; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 22px 40px; }
+.strana { max-width: 1240px; margin: 0 auto; display: grid; gap: 18px; }
+.hlava { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+.hlava h1 { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 4vw, 40px); margin: 0; text-wrap: balance; }
+.hlava p { margin: 0; color: var(--fg-2); max-width: 62ch; }
+.rozlozeni { display: grid; grid-template-columns: minmax(260px, 380px) minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 820px) { .rozlozeni { grid-template-columns: 1fr; } }
+
+/* telefon s náhledem */
+.nahled { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); display: grid; gap: 10px; }
+@media (max-width: 820px) { .nahled { position: static; max-width: 380px; width: 100%; margin: 0 auto; } }
+.telefon { position: relative; aspect-ratio: 9 / 16; width: 100%; max-width: 100%; border-radius: 22px; overflow: hidden; background: #000;
+  container-type: inline-size; box-shadow: 0 18px 50px rgba(58,40,54,.25); }
+.telefon video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.telefon video.cb, .telefon canvas.cb { filter: grayscale(1) contrast(1.08); }
+/* video s maskou: horní polovina obraz, dolní polovina maska osoby; vidět je jen horní polovina */
+.telefon video.dvoj { height: 200%; bottom: auto; object-fit: fill; }
+.popredi { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.vrstva { position: absolute; inset: 0; pointer-events: none; }
+.nadpis { position: absolute; left: 4%; right: 4%; text-align: center; line-height: 1.05; }
+.nadpis .v { display: block; font-weight: 800; letter-spacing: .01em; text-transform: uppercase; }
+.nadpis .m { display: block; font-family: var(--kurziva); font-style: italic; font-weight: 400; margin-top: .6cqw; }
+.stin { text-shadow: 0 .35cqw 1.4cqw rgba(0,0,0,.55), 0 0 .3cqw rgba(0,0,0,.35); }
+.titulek { position: absolute; transform: translate(-50%, -50%); color: #fff; white-space: nowrap; }
+.zapis { position: absolute; background: #FCF8EE; border-radius: 1.6cqw; box-shadow: 0 1.2cqw 3cqw rgba(0,0,0,.28); color: #26242E;
+  font-family: var(--kurziva); font-style: italic; padding: 3.2cqw 4.6cqw 3cqw; transform: rotate(-1.5deg);
+  background-image: repeating-linear-gradient(transparent 0, transparent calc(var(--r) - 1px), #C4D2E2 calc(var(--r) - 1px), #C4D2E2 var(--r)); }
+.zapis::before { content: ""; position: absolute; left: 5%; right: 5%; top: -1.8cqw; height: 3.6cqw;
+  background: radial-gradient(circle at center, transparent 0.7cqw, #46464E 0.75cqw, #46464E 1.15cqw, transparent 1.2cqw) 0 0 / 8.2cqw 100% repeat-x; }
+.zapis .zh { font-size: 4.4cqw; margin-bottom: .6cqw; }
+.zapis .pol { display: flex; align-items: center; gap: 2cqw; font-size: 3.9cqw; height: var(--r); }
+.zapis .box { width: 3cqw; height: 3cqw; border: .35cqw solid #26242E; border-radius: .5cqw; display: grid; place-items: center; font-style: normal; font-size: 2.6cqw; line-height: 1; }
+.fotka { position: absolute; width: 30%; aspect-ratio: 3 / 4; object-fit: cover; border: 1cqw solid #fff; box-shadow: 0 1.5cqw 3cqw rgba(0,0,0,.35); }
+.znacka { position: absolute; top: 2.4cqw; left: 2.4cqw; font: 600 2.6cqw/1 var(--body); color: #fff; background: rgba(0,0,0,.45); padding: 1.2cqw 2cqw; border-radius: 99px; }
+.ovladani { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.ovladani input[type=range] { width: 100%; }
+.cas { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--fg-2); }
+.prepinace { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--fg-2); }
+.prepinace label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+
+/* panely */
+.panely { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; min-width: 0; }
+@media (max-width: 1060px) { .panely { grid-template-columns: 1fr; } }
+.panel { background: var(--panel); border: 1px solid var(--linka); border-radius: 16px; padding: 16px 18px 18px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.panel.cely { grid-column: 1 / -1; }
+.panel h2 { font-family: var(--display); font-style: italic; font-weight: 500; font-size: 24px; margin: 0; }
+.stitek { font-size: 10.5px; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase; color: var(--fg-2); margin: 2px 0 -4px; }
+.volby { display: flex; flex-wrap: wrap; gap: 8px; }
+.volba { font: inherit; text-align: left; background: var(--panel); color: var(--fg); border: 1.5px solid var(--linka); border-radius: 10px;
+  padding: 8px 12px; cursor: pointer; display: grid; gap: 1px; min-width: 0; }
+.volba small { font-size: 10.5px; color: var(--fg-2); }
+.volba[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--akcent-2); }
+.volba:focus-visible, .tl:focus-visible, .barva:focus-visible { outline: 2px solid var(--akcent); outline-offset: 2px; }
+.volba .ukazka { font-size: 20px; line-height: 1.1; }
+.barvy { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.barva { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--linka); cursor: pointer; padding: 0; }
+.barva[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 3px var(--akcent-2); }
+.hex { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-2); }
+.hex input[type=text] { font: 500 13px/1 ui-monospace, Menlo, monospace; width: 8.5em; padding: 8px 10px; border-radius: 8px; border: 1.5px solid var(--linka); background: var(--panel); color: var(--fg); text-transform: uppercase; }
+.hex input[type=text][aria-invalid="true"] { border-color: #C0392B; }
+.hex input[type=color] { width: 34px; height: 30px; border: 0; background: none; padding: 0; cursor: pointer; }
+.vzorek { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--linka); flex: none; }
+.titulek.veta { white-space: normal; text-align: center; width: 84cqw; line-height: 1.15; }
+.vlastni { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-2); }
+.vlastni input { width: 38px; height: 34px; border: 0; background: none; padding: 0; cursor: pointer; }
+.posuvnik { display: grid; grid-template-columns: auto minmax(0, 1fr) 3.5em; gap: 10px; align-items: center; font-size: 13px; }
+.posuvnik output { font-variant-numeric: tabular-nums; color: var(--fg-2); text-align: right; }
+.efekty { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+@media (max-width: 520px) { .efekty { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .efekt .txt { padding: 7px 8px 9px; } }
+.efekt { position: relative; background: var(--panel); border: 1.5px solid var(--linka); border-radius: 12px; overflow: hidden; display: grid; }
+.efekt .vyber { display: grid; grid-template-rows: auto 1fr; text-align: left; font: inherit; color: inherit; padding: 0; margin: 0; border: 0; background: none; cursor: pointer; }
+.efekt .vyber:focus-visible, .efekt .ukaz:focus-visible { outline: 2px solid var(--akcent); outline-offset: -2px; }
+.efekt .ukaz { position: absolute; left: 8px; top: 8px; font: 700 11px/1 var(--body); border: 0; border-radius: 99px; padding: 7px 10px; cursor: pointer;
+  background: rgba(58,40,54,.82); color: #FBF6EF; }
+.efekt .ukaz:hover { background: var(--tmava); }
+.efekt.ted { outline: 3px solid var(--akcent); outline-offset: 1px; }
+.efekt .dodas { margin-top: 4px; padding-top: 6px; border-top: 1px dashed var(--linka); color: var(--fg); }
+.efekt .dodas b { font: 700 11.5px/1.45 var(--body); }
+.efekt .nahl { position: relative; }
+.efekt .zaber { position: absolute; left: 8px; bottom: 8px; font: 700 10.5px/1.2 var(--body); background: var(--akcent-2); color: var(--tmava);
+  border-radius: 99px; padding: 5px 9px; max-width: calc(100% - 16px); }
+.telefon video.ukazka { z-index: 3; }
+#telefon { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 12px); }
+.zavrit { position: absolute; right: 2.4cqw; top: 2.4cqw; z-index: 4; font: 700 3cqw/1 var(--body); color: #fff; background: rgba(0,0,0,.55); border: 0; border-radius: 99px; padding: 1.6cqw 2.6cqw; cursor: pointer; }
+.znacka { z-index: 4; }
+.efekt.vybrano { border-color: var(--fg); box-shadow: 0 0 0 2px var(--akcent-2); }
+/* celý obraz 9:16, aby byly vidět i efekty nad hlavou */
+.efekt .nahl { aspect-ratio: 9 / 16; background: var(--panel-2); overflow: hidden; }
+.efekt .nahl img, .efekt .nahl video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.efekt .txt { padding: 9px 11px 11px; display: grid; gap: 3px; }
+.efekt b { font-family: var(--display); font-size: 15px; }
+.efekt span { font-size: 11.5px; color: var(--fg-2); line-height: 1.45; }
+.efekt .fajf { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,.85); border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+.efekt.vybrano .fajf { background: var(--akcent); }
+.efekt.vybrano .fajf::after { content: ""; position: absolute; left: 7px; top: 3px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+.efekt .vzdy { position: absolute; left: 8px; top: 8px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; background: var(--tmava); color: var(--na-tmave); padding: 3px 7px; border-radius: 99px; }
+.filtr { display: flex; flex-wrap: wrap; gap: 6px; }
+.fotky { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.fot { border: 1px solid var(--linka); border-radius: 12px; overflow: hidden; display: grid; background: var(--panel); }
+.fot img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+.fot div { padding: 8px; display: grid; gap: 6px; font-size: 12px; }
+.fot select { font: inherit; font-size: 12px; width: 100%; padding: 5px; border-radius: 8px; border: 1px solid var(--linka); background: var(--panel); color: var(--fg); }
+.nahraj { border: 1.5px dashed var(--akcent); border-radius: 12px; display: grid; place-items: center; text-align: center; padding: 18px; color: var(--fg-2); cursor: pointer; min-height: 150px; }
+.nahraj input { display: none; }
+.prepis { line-height: 2.05; font-size: 15px; }
+.prepis span { cursor: pointer; padding: 1px 2px; border-radius: 4px; }
+.prepis span.ud { text-decoration: underline; text-decoration-color: var(--akcent); text-decoration-thickness: 2px; text-underline-offset: 4px; font-weight: 600; }
+.prepis span.akt { background: var(--tmava); color: var(--na-tmave); }
+.osa { overflow-x: auto; }
+.osa table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.osa td { padding: 6px 8px; border-top: 1px solid var(--linka); vertical-align: top; }
+.osa td:first-child { font-variant-numeric: tabular-nums; color: var(--fg-2); white-space: nowrap; width: 4.5em; }
+.osa td:last-child { font-family: ui-monospace, Menlo, monospace; color: var(--fg-2); font-size: 11.5px; text-align: right; white-space: nowrap; }
+.osa tr.ted td { background: var(--panel-2); }
+.tl { font: 600 12px/1 var(--body); letter-spacing: .4px; border: 0; border-radius: 10px; padding: 10px 14px; cursor: pointer; background: var(--akcent-2); color: var(--fg); }
+.tl.hlavni { background: var(--tmava); color: var(--na-tmave); }
+.tl.tiche { background: transparent; border: 1px solid var(--linka); }
+.tl.velke { font-size: 15px; padding: 14px 22px; }
+#kod-detail summary { cursor: pointer; }
+#kod-detail[open] { display: grid; gap: 8px; }
+.radek { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.radek input[type=text] { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--linka); background: var(--panel); color: var(--fg); min-width: 0; flex: 1 1 180px; }
+.kod { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; background: var(--panel-2); border-radius: 10px; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; }
+.moje { display: flex; flex-wrap: wrap; gap: 8px; }
+.moje-k { border: 1px solid var(--linka); border-radius: 10px; padding: 8px 10px; display: grid; gap: 4px; font-size: 12px; min-width: 0; }
+.moje-k b { font-family: var(--display); font-size: 15px; }
+.pozn { font-size: 12px; color: var(--fg-2); margin: 0; }
+.krok { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--tmava); color: var(--na-tmave);
+  font: 700 14px/1 var(--body); font-style: normal; margin-right: 10px; vertical-align: 4px; }
+.strih { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; }
+.strih li::marker { color: var(--akcent); }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--tmava); color: var(--na-tmave); padding: 10px 16px; border-radius: 99px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.je { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+
+<div class="strana">
+  <header class="hlava">
+    <h1>Vyber si svůj styl</h1>
+    <p>Nahraješ video a studio ho sestříhá. Pak vybereš nadpisy a titulky, to je základ každého reelu. Nakonec přidáš efekty, které chceš. Každá volba se hned ukáže na videu vlevo.</p>
+  </header>
+
+  <div class="rozlozeni">
+    <section class="nahled" aria-label="Náhled reelu">
+      <div class="telefon" id="telefon">
+        <video id="video" class="dvoj" src="video/reel-zaklad-maska.mp4" playsinline preload="auto"></video>
+        <div class="vrstva" id="vrstva"></div>
+        <canvas class="popredi" id="popredi" width="540" height="960" hidden></canvas>
+        <div class="vrstva" id="vrstva-pred"></div>
+        <video id="ukazka" class="ukazka" muted playsinline loop hidden aria-label="Ukázka efektu"></video>
+        <span class="znacka" id="znacka">Náhled tvé volby</span>
+        <button class="zavrit" id="zavrit-ukazku" type="button" hidden>✕ Zpět</button>
+      </div>
+      <div class="ovladani">
+        <button class="tl hlavni" id="hrat" type="button">▶ Přehrát</button>
+        <input id="posun" type="range" min="0" max="1000" value="0" aria-label="Posun ve videu">
+        <span class="cas" id="cas">0:00,0</span>
+      </div>
+      <div class="prepinace">
+        <label><input type="checkbox" id="p-zvuky" checked> zvukové efekty</label>
+        <label><input type="checkbox" id="p-titulky" checked> titulky</label>
+        <label><input type="checkbox" id="p-efekty" checked> nadpisy a efekty</label>
+      </div>
+      <button class="tl tiche" id="hotovy" type="button">Pustit hotový reel (verze 4)</button>
+    </section>
+
+    <div class="panely">
+      <section class="panel cely">
+        <h2><span class="krok">1</span>Střih a obraz</h2>
+        <p class="pozn">Tohle udělá studio samo, hned jak nahraješ surové video:</p>
+        <ul class="strih">
+          <li>z každé věty vybere nejlepší pokus, nepovedené a zopakované věty vyhodí,</li>
+          <li>vystřihne mezery mezi větami, konec slova nechá doznít,</li>
+          <li>na každém střihu změní velikost záběru (přiblížení), obličej zůstává na místě,</li>
+          <li>všechny efekty dá za tebe, nikdy přes hlavu. Před tebou jsou jen titulky a výzva.</li>
+        </ul>
+        <div class="stitek">Obraz</div>
+        <div class="volby" id="obraz"></div>
+      </section>
+
+      <section class="panel">
+        <h2><span class="krok">2</span>Nadpisy</h2>
+        <div class="stitek">Barva nadpisů</div>
+        <div class="barvy" id="barvy"></div>
+        <div class="hex"><span class="vzorek" id="vzorek-n"></span><label for="hex-n">vlastní barva</label><input type="text" id="hex-n" maxlength="7" placeholder="#D48BA0" spellcheck="false" autocomplete="off"><input type="color" id="pick-n" aria-label="Vybrat vlastní barvu nadpisů"></div>
+        <div class="stitek">Písmo nadpisů</div>
+        <div class="volby" id="fonty-nadpis"></div>
+        <div class="stitek">Kde stojí</div>
+        <div class="volby" id="poloha-n"></div>
+      </section>
+
+      <section class="panel">
+        <h2><span class="krok">3</span>Titulky</h2>
+        <div class="stitek">Vzhled titulků</div>
+        <div class="volby" id="vzhled-t"></div>
+        <div class="stitek">Barva titulků</div>
+        <div class="volby" id="barva-titulku"></div>
+        <div class="hex" id="hex-t-radek"><span class="vzorek" id="vzorek-t"></span><label for="hex-t">vlastní barva</label><input type="text" id="hex-t" maxlength="7" placeholder="#4A3340" spellcheck="false" autocomplete="off"><input type="color" id="pick-t" aria-label="Vybrat vlastní barvu titulků"></div>
+        <div class="stitek">Písmo titulků</div>
+        <div class="volby" id="fonty-titulky"></div>
+        <div class="stitek">Kde stojí</div>
+        <div class="volby" id="poloha"></div>
+        <div class="stitek">Jak se ukazují</div>
+        <div class="volby" id="rezim-t"></div>
+        <div class="stitek">Velikost</div>
+        <div class="posuvnik"><span>menší</span><input type="range" id="velikost" min="70" max="280" step="5" value="100" aria-label="Velikost titulků"><output id="velikost-h">100 %</output></div>
+      </section>
+
+      <section class="panel cely">
+        <h2><span class="krok">4</span>Efekty a prvky</h2>
+        <p class="pozn">Každá ukázka je kousek tvého hotového reelu a ukazuje jen ten jeden efekt. Vyber, co chceš přidat. Studio efekt dá k větě, ke které se hodí.</p>
+        <div class="filtr" id="filtr"></div>
+        <div class="efekty" id="efekty"></div>
+        <p class="pozn">Zápisník a kartu výzvy uvidíš i v náhledu vlevo. Ostatní efekty ukazuje jejich karta.</p>
+      </section>
+
+      <section class="panel">
+        <h2><span class="krok">5</span>Zvukové efekty</h2>
+        <div class="stitek">Kdy zazní</div>
+        <div class="volby" id="zvuky"></div>
+        <div class="posuvnik"><span>hlasitost</span><input type="range" id="hlasitost" min="0" max="100" step="5" value="70" aria-label="Hlasitost efektů"><output id="hlasitost-h">70 %</output></div>
+        <p class="pozn">Zvuky vyrábí studio samo, žádné cizí soubory ani licence. Klikni na zvuk a uslyšíš ho.</p>
+      </section>
+
+      <!-- Marcela 11. 11. 2026: fotky a přepis z knihovny pryč (mátlo by to). Obrázky patří do složky PODKLADY-SEM reelu.
+           Sekce zůstávají skryté, aby skript stránky běžel beze změny. -->
+      <section class="panel" hidden>
+        <h2><span class="krok">6</span>Tvoje fotky a screenshoty</h2>
+        <p class="pozn" id="fotky-pozn">Nahraj obrázky, které chceš v reelu, a u každého vyber větu, kdy se má ukázat. V náhledu se objeví za tebou, nikdy přes hlavu.</p>
+        <div class="fotky" id="fotky">
+          <label class="nahraj" for="soubory"><input type="file" id="soubory" accept="image/png,image/jpeg,image/webp" multiple><span><b>Přidat obrázky</b><br>PNG, JPG nebo WEBP</span></label>
+        </div>
+      </section>
+
+      <section class="panel cely" hidden>
+        <h2>Jak to funguje: slovo → událost</h2>
+        <div class="stitek">Co v reelu říkáš (podtržené slovo = v tu chvíli se něco stane, klikni a video tam skočí)</div>
+        <div class="prepis" id="prepis"></div>
+        <div class="stitek">Časová osa událostí a zvuků</div>
+        <div class="osa"><table><tbody id="osa"></tbody></table></div>
+      </section>
+
+      <section class="panel cely" id="ulozit-panel">
+        <h2><span class="krok">6</span>Ulož výběr pro svůj reel</h2>
+        <div class="radek"><button class="tl hlavni velke" id="pro-reel" type="button">Uložit výběr pro tenhle reel</button></div>
+        <p class="pozn" id="pro-reel-pozn">Claude si výběr převezme sám a podle něj dodělá tvůj reel. Nic nekopíruješ ani nepíšeš.</p>
+        <div class="stitek">Pojmenuj si styl na příště (nemusíš)</div>
+        <div class="radek">
+          <input type="text" id="nazev" maxlength="40" placeholder="Název, třeba Můj hlavní styl">
+          <button class="tl hlavni" id="ulozit" type="button">Uložit můj styl</button>
+          <button class="tl" id="vychozi" type="button" hidden>Nastavit jako výchozí pro studio</button>
+        </div>
+        <details id="kod-detail"><summary class="pozn">Kód stylu (jen když Claude tvůj výběr nenajde)</summary>
+        <div class="kod" id="kod"></div>
+        <div class="radek"><button class="tl tiche" id="kopirovat" type="button">Zkopírovat kód</button><span class="pozn">Vlož ho Claudovi do chatu.</span></div>
+        </details>
+        <div class="stitek">Moje styly</div>
+        <div class="moje" id="moje"><span class="pozn">Zatím nic. Vyber barvu, písmo a efekty a klikni na Uložit můj styl.</span></div>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const DATA = {"delka": 53.067, "slova": [{"w": "Věřila", "s": 0.07, "e": 0.54, "v": "k1-v01"}, {"w": "bys,", "s": 0.54, "e": 0.81, "v": "k1-v01"}, {"w": "že", "s": 0.92, "e": 1.03, "v": "k1-v01"}, {"w": "celé", "s": 1.03, "e": 1.42, "v": "k1-v01"}, {"w": "tohle", "s": 1.42, "e": 1.64, "v": "k1-v01"}, {"w": "video", "s": 1.64, "e": 1.88, "v": "k1-v01"}, {"w": "sestříhal", "s": 1.88, "e": 2.15, "v": "k1-v01"}, {"w": "Claude?", "s": 2.15, "e": 2.54, "v": "k1-v01"}, {"w": "Krok", "s": 3.06, "e": 2.83, "v": "k1-v02"}, {"w": "za", "s": 3.1, "e": 3.22, "v": "k1-v02"}, {"w": "krokem", "s": 3.22, "e": 3.56, "v": "k1-v02"}, {"w": "přidal", "s": 3.56, "e": 3.88, "v": "k1-v02"}, {"w": "přiblížení,", "s": 3.88, "e": 4.74, "v": "k1-v02"}, {"w": "text", "s": 4.9, "e": 5.06, "v": "k1-v02"}, {"w": "na", "s": 5.06, "e": 5.2, "v": "k1-v02"}, {"w": "obrazovku,", "s": 5.2, "e": 5.7, "v": "k1-v02"}, {"w": "titulky", "s": 5.82, "e": 6.22, "v": "k1-v02"}, {"w": "a", "s": 6.22, "e": 6.38, "v": "k1-v03"}, {"w": "dokonce", "s": 6.38, "e": 6.76, "v": "k1-v03"}, {"w": "mi", "s": 6.76, "e": 6.9, "v": "k1-v03"}, {"w": "vytvořil", "s": 6.9, "e": 7.34, "v": "k1-v03"}, {"w": "i", "s": 7.34, "e": 7.52, "v": "k1-v03"}, {"w": "tenhle", "s": 7.52, "e": 7.82, "v": "k1-v03"}, {"w": "krásný", "s": 7.82, "e": 8.58, "v": "k1-v03"}, {"w": "checklist.", "s": 8.58, "e": 8.82, "v": "k1-v03"}, {"w": "Jsem", "s": 9.16, "e": 9.29, "v": "k1-v04"}, {"w": "máma", "s": 9.29, "e": 9.63, "v": "k1-v04"}, {"w": "a", "s": 9.63, "e": 9.88, "v": "k1-v04"}, {"w": "každý", "s": 10.05, "e": 10.46, "v": "k1-v04"}, {"w": "den", "s": 10.46, "e": 10.71, "v": "k1-v04"}, {"w": "mám", "s": 10.71, "e": 11.07, "v": "k1-v04"}, {"w": "jenom", "s": 11.07, "e": 11.34, "v": "k1-v04"}, {"w": "minimum", "s": 11.34, "e": 11.73, "v": "k1-v04"}, {"w": "času.", "s": 11.73, "e": 12.15, "v": "k1-v04"}, {"w": "A", "s": 12.3, "e": 12.36, "v": "k1-v05"}, {"w": "jediné,", "s": 12.36, "e": 12.82, "v": "k1-v05"}, {"w": "co", "s": 12.86, "e": 12.98, "v": "k1-v05"}, {"w": "musím", "s": 12.98, "e": 13.3, "v": "k1-v05"}, {"w": "dělat,", "s": 13.3, "e": 13.66, "v": "k1-v05"}, {"w": "je", "s": 13.83, "e": 14.0, "v": "k1-v05"}, {"w": "věnovat", "s": 14.0, "e": 14.52, "v": "k1-v05"}, {"w": "se", "s": 14.52, "e": 14.64, "v": "k1-v05"}, {"w": "10", "s": 14.64, "e": 14.84, "v": "k1-v05"}, {"w": "minut", "s": 14.84, "e": 15.1, "v": "k1-v05"}, {"w": "natáčení", "s": 15.1, "e": 15.78, "v": "k1-v05"}, {"w": "videa.", "s": 15.94, "e": 16.32, "v": "k1-v05"}, {"w": "A", "s": 16.73, "e": 16.86, "v": "k1-v06"}, {"w": "o", "s": 16.86, "e": 17.02, "v": "k1-v06"}, {"w": "všechno", "s": 17.02, "e": 17.27, "v": "k1-v06"}, {"w": "ostatní", "s": 17.27, "e": 17.59, "v": "k1-v06"}, {"w": "se", "s": 17.59, "e": 17.71, "v": "k1-v06"}, {"w": "postará", "s": 17.71, "e": 18.09, "v": "k1-v06"}, {"w": "Claude,", "s": 18.09, "e": 18.43, "v": "k1-v06"}, {"w": "dokud", "s": 18.54, "e": 18.86, "v": "k1-v06"}, {"w": "není", "s": 19.05, "e": 19.5, "v": "k1-v06"}, {"w": "video", "s": 19.5, "e": 19.8, "v": "k1-v06"}, {"w": "připravené", "s": 19.8, "e": 20.41, "v": "k1-v06"}, {"w": "k", "s": 20.41, "e": 20.52, "v": "k1-v06"}, {"w": "publikování.", "s": 20.52, "e": 20.77, "v": "k1-v06"}, {"w": "Claude", "s": 21.12, "e": 21.35, "v": "k1-v07"}, {"w": "používám", "s": 21.35, "e": 21.83, "v": "k1-v07"}, {"w": "na", "s": 21.83, "e": 21.93, "v": "k1-v07"}, {"w": "střih", "s": 21.93, "e": 22.15, "v": "k1-v07"}, {"w": "videí", "s": 22.15, "e": 22.57, "v": "k1-v07"}, {"w": "už", "s": 22.57, "e": 22.77, "v": "k1-v07"}, {"w": "nějakou", "s": 23.07, "e": 23.53, "v": "k1-v07"}, {"w": "dobu", "s": 23.53, "e": 23.75, "v": "k1-v07"}, {"w": "a", "s": 23.75, "e": 23.95, "v": "k1-v08"}, {"w": "ušetřil", "s": 23.95, "e": 24.43, "v": "k1-v08"}, {"w": "mi", "s": 24.43, "e": 24.57, "v": "k1-v08"}, {"w": "neskutečný", "s": 24.57, "e": 25.25, "v": "k1-v08"}, {"w": "množství", "s": 25.25, "e": 25.59, "v": "k1-v08"}, {"w": "času.", "s": 25.59, "e": 25.87, "v": "k1-v08"}, {"w": "dřív", "s": 26.17, "e": 26.37, "v": "k1-v09"}, {"w": "jsem", "s": 26.37, "e": 26.51, "v": "k1-v09"}, {"w": "nad", "s": 26.51, "e": 26.69, "v": "k1-v09"}, {"w": "střihem", "s": 26.69, "e": 27.05, "v": "k1-v09"}, {"w": "jednoho", "s": 27.05, "e": 27.37, "v": "k1-v09"}, {"w": "videa", "s": 27.37, "e": 27.69, "v": "k1-v09"}, {"w": "strávila,", "s": 27.69, "e": 28.29, "v": "k1-v09"}, {"w": "klidně", "s": 28.52, "e": 28.73, "v": "k1-v09"}, {"w": "jednu", "s": 28.73, "e": 29.11, "v": "k1-v09"}, {"w": "hodinu.", "s": 29.11, "e": 29.46, "v": "k1-v09"}, {"w": "Dneska", "s": 29.64, "e": 29.98, "v": "k1-v10"}, {"w": "mi", "s": 29.98, "e": 30.09, "v": "k1-v10"}, {"w": "to", "s": 30.09, "e": 30.16, "v": "k1-v10"}, {"w": "zabere", "s": 30.16, "e": 30.43, "v": "k1-v10"}, {"w": "10", "s": 30.43, "e": 30.75, "v": "k1-v10"}, {"w": "minut.", "s": 30.75, "e": 31.05, "v": "k1-v10"}, {"w": "A", "s": 31.09, "e": 31.15, "v": "k1-v10"}, {"w": "mám", "s": 31.15, "e": 31.35, "v": "k1-v10"}, {"w": "pro", "s": 31.35, "e": 31.53, "v": "k1-v10"}, {"w": "tebe", "s": 31.53, "e": 31.77, "v": "k1-v10"}, {"w": "super", "s": 31.77, "e": 32.23, "v": "k1-v10"}, {"w": "zprávu.", "s": 32.23, "e": 32.57, "v": "k1-v10"}, {"w": "podělím", "s": 32.77, "e": 33.26, "v": "k1-v11"}, {"w": "se", "s": 33.26, "e": 33.45, "v": "k1-v11"}, {"w": "s", "s": 33.45, "e": 33.52, "v": "k1-v11"}, {"w": "tebou", "s": 33.67, "e": 33.99, "v": "k1-v11"}, {"w": "o", "s": 33.99, "e": 34.22, "v": "k1-v11"}, {"w": "všechna", "s": 34.22, "e": 34.66, "v": "k1-v11"}, {"w": "svá", "s": 34.66, "e": 34.94, "v": "k1-v11"}, {"w": "tajemství.", "s": 35.34, "e": 35.37, "v": "k1-v11"}, {"w": "Jak", "s": 35.63, "e": 35.83, "v": "k1-v12"}, {"w": "vytvářet", "s": 35.83, "e": 36.27, "v": "k1-v12"}, {"w": "kvalitní", "s": 36.27, "e": 36.65, "v": "k1-v12"}, {"w": "obsah,", "s": 36.65, "e": 36.99, "v": "k1-v12"}, {"w": "který", "s": 37.05, "e": 37.21, "v": "k1-v12"}, {"w": "ti", "s": 37.21, "e": 37.29, "v": "k1-v12"}, {"w": "skutečně", "s": 37.29, "e": 37.75, "v": "k1-v12"}, {"w": "vydělává", "s": 37.75, "e": 38.19, "v": "k1-v12"}, {"w": "peníze", "s": 38.19, "e": 38.53, "v": "k1-v12"}, {"w": "a", "s": 38.53, "e": 38.69, "v": "k1-v13"}, {"w": "přitom", "s": 38.69, "e": 39.19, "v": "k1-v13"}, {"w": "tomu", "s": 39.19, "e": 39.47, "v": "k1-v13"}, {"w": "věnovat", "s": 39.47, "e": 39.85, "v": "k1-v13"}, {"w": "méně", "s": 39.85, "e": 40.21, "v": "k1-v13"}, {"w": "než", "s": 40.21, "e": 40.39, "v": "k1-v13"}, {"w": "hodinu", "s": 40.39, "e": 40.83, "v": "k1-v13"}, {"w": "denně.", "s": 40.83, "e": 40.88, "v": "k1-v13"}, {"w": "A", "s": 41.15, "e": 41.2, "v": "k1-v14"}, {"w": "tohle", "s": 41.2, "e": 41.42, "v": "k1-v14"}, {"w": "je", "s": 41.42, "e": 41.5, "v": "k1-v14"}, {"w": "přesně", "s": 41.5, "e": 41.78, "v": "k1-v14"}, {"w": "systém,", "s": 41.78, "e": 42.18, "v": "k1-v14"}, {"w": "díky", "s": 42.3, "e": 42.46, "v": "k1-v14"}, {"w": "kterému", "s": 42.46, "e": 42.8, "v": "k1-v14"}, {"w": "jsem", "s": 42.8, "e": 42.94, "v": "k1-v14"}, {"w": "sama", "s": 42.94, "e": 43.2, "v": "k1-v14"}, {"w": "vybudovala", "s": 43.2, "e": 43.8, "v": "k1-v14"}, {"w": "Instagramový", "s": 43.8, "e": 44.4, "v": "k1-v15"}, {"w": "účet", "s": 44.4, "e": 44.78, "v": "k1-v15"}, {"w": "s", "s": 44.78, "e": 44.96, "v": "k1-v15"}, {"w": "20", "s": 44.96, "e": 45.22, "v": "k1-v15"}, {"w": "tisíci", "s": 45.22, "e": 45.86, "v": "k1-v15"}, {"w": "sledujícími.", "s": 45.86, "e": 46.6, "v": "k1-v15"}, {"w": "Takže", "s": 46.77, "e": 47.02, "v": "k2-v01"}, {"w": "řada", "s": 47.02, "e": 47.2, "v": "k2-v01"}, {"w": "je", "s": 47.43, "e": 47.53, "v": "k2-v01"}, {"w": "na", "s": 47.53, "e": 47.63, "v": "k2-v01"}, {"w": "tobě.", "s": 47.63, "e": 47.89, "v": "k2-v01"}, {"w": "Napiš", "s": 48.01, "e": 48.29, "v": "k2-v02"}, {"w": "mi", "s": 48.29, "e": 48.37, "v": "k2-v02"}, {"w": "do", "s": 48.37, "e": 48.47, "v": "k2-v02"}, {"w": "komentáře", "s": 48.47, "e": 48.99, "v": "k2-v02"}, {"w": "Reel", "s": 48.99, "e": 49.33, "v": "k2-v02"}, {"w": "a", "s": 49.33, "e": 49.69, "v": "k2-v02"}, {"w": "pošlu", "s": 49.69, "e": 49.99, "v": "k2-v02"}, {"w": "ti", "s": 49.99, "e": 50.09, "v": "k2-v02"}, {"w": "odkaz,", "s": 50.09, "e": 50.47, "v": "k2-v02"}, {"w": "kde", "s": 50.53, "e": 50.63, "v": "k2-v02"}, {"w": "ti", "s": 50.63, "e": 50.73, "v": "k2-v02"}, {"w": "naučím", "s": 50.73, "e": 51.11, "v": "k2-v02"}, {"w": "všechno,", "s": 51.11, "e": 51.73, "v": "k2-v02"}, {"w": "co", "s": 51.97, "e": 51.99, "v": "k2-v02"}, {"w": "sama", "s": 51.99, "e": 52.37, "v": "k2-v02"}, {"w": "umím.", "s": 52.37, "e": 52.75, "v": "k2-v02"}], "stranky": [{"w": "věřila", "s": 0.07, "e": 0.54, "hrud": [540, 1260], "vedle": [822, 885]}, {"w": "bys", "s": 0.54, "e": 0.92, "hrud": [540, 1259], "vedle": [793, 885]}, {"w": "že", "s": 0.92, "e": 1.03, "hrud": [540, 1259], "vedle": [778, 885]}, {"w": "celé", "s": 1.03, "e": 1.42, "hrud": [540, 1259], "vedle": [801, 885]}, {"w": "tohle", "s": 1.42, "e": 1.64, "hrud": [540, 1236], "vedle": [776, 891]}, {"w": "video", "s": 1.64, "e": 1.88, "hrud": [540, 1236], "vedle": [781, 891]}, {"w": "sestříhal", "s": 1.88, "e": 2.15, "hrud": [540, 1227], "vedle": [802, 895]}, {"w": "claude?", "s": 2.15, "e": 2.83, "hrud": [540, 1267], "vedle": [837, 882]}, {"w": "krok", "s": 3.06, "e": 3.1, "hrud": [540, 1313], "vedle": [821, 899]}, {"w": "za", "s": 3.1, "e": 3.22, "hrud": [540, 1313], "vedle": [789, 899]}, {"w": "krokem", "s": 3.22, "e": 3.56, "hrud": [540, 1313], "vedle": [862, 899]}, {"w": "přidal", "s": 3.56, "e": 3.88, "hrud": [540, 1335], "vedle": [838, 907]}, {"w": "přiblížení", "s": 3.88, "e": 4.9, "hrud": [540, 1350], "vedle": [482, 1275]}, {"w": "text", "s": 4.9, "e": 5.06, "hrud": [540, 1350], "vedle": [854, 915]}, {"w": "na", "s": 5.06, "e": 5.2, "hrud": [540, 1350], "vedle": [835, 915]}, {"w": "obrazovku", "s": 5.2, "e": 5.82, "hrud": [540, 1311], "vedle": [485, 1243]}, {"w": "titulky", "s": 5.82, "e": 6.22, "hrud": [540, 1341], "vedle": [834, 906]}, {"w": "a", "s": 6.22, "e": 6.38, "hrud": [540, 1341], "vedle": [763, 906]}, {"w": "dokonce", "s": 6.38, "e": 6.76, "hrud": [540, 1341], "vedle": [860, 906]}, {"w": "mi", "s": 6.76, "e": 6.9, "hrud": [540, 1341], "vedle": [783, 906]}, {"w": "vytvořil", "s": 6.9, "e": 7.34, "hrud": [540, 1341], "vedle": [848, 906]}, {"w": "i", "s": 7.34, "e": 7.52, "hrud": [540, 1292], "vedle": [745, 889]}, {"w": "tenhle", "s": 7.52, "e": 7.82, "hrud": [540, 1295], "vedle": [850, 890]}, {"w": "krásný", "s": 7.82, "e": 8.58, "hrud": [540, 1386], "vedle": [867, 928]}, {"w": "checklist", "s": 8.58, "e": 9.12, "hrud": [540, 1389], "vedle": [893, 923]}, {"w": "jsem", "s": 9.16, "e": 9.29, "hrud": [540, 1300], "vedle": [819, 883]}, {"w": "máma", "s": 9.29, "e": 9.63, "hrud": [540, 1300], "vedle": [838, 883]}, {"w": "a", "s": 9.63, "e": 10.05, "hrud": [540, 1260], "vedle": [724, 889]}, {"w": "každý", "s": 10.05, "e": 10.46, "hrud": [540, 1260], "vedle": [789, 889]}, {"w": "den", "s": 10.46, "e": 10.71, "hrud": [540, 1256], "vedle": [780, 893]}, {"w": "mám", "s": 10.71, "e": 11.07, "hrud": [540, 1295], "vedle": [808, 910]}, {"w": "jenom", "s": 11.07, "e": 11.34, "hrud": [540, 1292], "vedle": [824, 916]}, {"w": "minimum", "s": 11.34, "e": 11.73, "hrud": [540, 1296], "vedle": [872, 907]}, {"w": "času", "s": 11.73, "e": 12.3, "hrud": [540, 1296], "vedle": [801, 907]}, {"w": "a", "s": 12.3, "e": 12.36, "hrud": [540, 1287], "vedle": [749, 903]}, {"w": "jediné", "s": 12.36, "e": 12.86, "hrud": [540, 1292], "vedle": [815, 906]}, {"w": "co", "s": 12.86, "e": 12.98, "hrud": [540, 1296], "vedle": [772, 907]}, {"w": "musím", "s": 12.98, "e": 13.3, "hrud": [540, 1290], "vedle": [818, 911]}, {"w": "dělat", "s": 13.3, "e": 13.83, "hrud": [540, 1290], "vedle": [793, 911]}, {"w": "je", "s": 13.83, "e": 14.0, "hrud": [540, 1279], "vedle": [748, 910]}, {"w": "věnovat", "s": 14.0, "e": 14.52, "hrud": [540, 1280], "vedle": [828, 908]}, {"w": "se", "s": 14.52, "e": 14.64, "hrud": [540, 1280], "vedle": [754, 908]}, {"w": "10", "s": 14.64, "e": 14.84, "hrud": [540, 1249], "vedle": [750, 893]}, {"w": "minut", "s": 14.84, "e": 15.1, "hrud": [540, 1249], "vedle": [802, 893]}, {"w": "natáčení", "s": 15.1, "e": 15.94, "hrud": [540, 1328], "vedle": [865, 929]}, {"w": "videa", "s": 15.94, "e": 16.62, "hrud": [540, 1327], "vedle": [822, 931]}, {"w": "a", "s": 16.73, "e": 16.86, "hrud": [540, 1327], "vedle": [767, 931]}, {"w": "o", "s": 16.86, "e": 17.02, "hrud": [540, 1327], "vedle": [769, 931]}, {"w": "všechno", "s": 17.02, "e": 17.27, "hrud": [540, 1327], "vedle": [878, 931]}, {"w": "ostatní", "s": 17.27, "e": 17.59, "hrud": [540, 1307], "vedle": [861, 923]}, {"w": "se", "s": 17.59, "e": 17.71, "hrud": [540, 1307], "vedle": [798, 923]}, {"w": "postará", "s": 17.71, "e": 18.09, "hrud": [540, 1307], "vedle": [869, 923]}, {"w": "claude", "s": 18.09, "e": 18.54, "hrud": [540, 1303], "vedle": [851, 927]}, {"w": "dokud", "s": 18.54, "e": 19.05, "hrud": [540, 1238], "vedle": [819, 885]}, {"w": "není", "s": 19.05, "e": 19.5, "hrud": [540, 1252], "vedle": [794, 892]}, {"w": "video", "s": 19.5, "e": 19.8, "hrud": [540, 1252], "vedle": [807, 892]}, {"w": "připravené", "s": 19.8, "e": 20.41, "hrud": [540, 1306], "vedle": [858, 917]}, {"w": "k", "s": 20.41, "e": 20.52, "hrud": [540, 1380], "vedle": [800, 927]}, {"w": "publikování", "s": 20.52, "e": 21.07, "hrud": [540, 1380], "vedle": [470, 1299]}, {"w": "claude", "s": 21.12, "e": 21.35, "hrud": [540, 1380], "vedle": [870, 927]}, {"w": "používám", "s": 21.35, "e": 21.83, "hrud": [540, 1336], "vedle": [882, 912]}, {"w": "na", "s": 21.83, "e": 21.93, "hrud": [540, 1336], "vedle": [798, 911]}, {"w": "střih", "s": 21.93, "e": 22.15, "hrud": [540, 1336], "vedle": [828, 911]}, {"w": "videí", "s": 22.15, "e": 22.57, "hrud": [540, 1336], "vedle": [829, 911]}, {"w": "už", "s": 22.57, "e": 23.07, "hrud": [540, 1298], "vedle": [771, 894]}, {"w": "nějakou", "s": 23.07, "e": 23.53, "hrud": [540, 1284], "vedle": [844, 923]}, {"w": "dobu", "s": 23.53, "e": 23.75, "hrud": [540, 1284], "vedle": [807, 923]}, {"w": "a", "s": 23.75, "e": 23.95, "hrud": [540, 1314], "vedle": [773, 901]}, {"w": "ušetřil", "s": 23.95, "e": 24.43, "hrud": [540, 1320], "vedle": [851, 904]}, {"w": "mi", "s": 24.43, "e": 24.57, "hrud": [540, 1281], "vedle": [793, 916]}, {"w": "neskutečný", "s": 24.57, "e": 25.25, "hrud": [540, 1302], "vedle": [492, 1246]}, {"w": "množství", "s": 25.25, "e": 25.59, "hrud": [540, 1313], "vedle": [886, 919]}, {"w": "času", "s": 25.59, "e": 26.17, "hrud": [540, 1313], "vedle": [825, 919]}, {"w": "dřív", "s": 26.17, "e": 26.37, "hrud": [540, 1260], "vedle": [780, 897]}, {"w": "jsem", "s": 26.37, "e": 26.51, "hrud": [540, 1260], "vedle": [788, 897]}, {"w": "nad", "s": 26.51, "e": 26.69, "hrud": [540, 1260], "vedle": [776, 897]}, {"w": "střihem", "s": 26.69, "e": 27.05, "hrud": [540, 1277], "vedle": [830, 903]}, {"w": "jednoho", "s": 27.05, "e": 27.37, "hrud": [540, 1277], "vedle": [833, 903]}, {"w": "videa", "s": 27.37, "e": 27.69, "hrud": [540, 1277], "vedle": [792, 903]}, {"w": "strávila", "s": 27.69, "e": 28.52, "hrud": [540, 1316], "vedle": [845, 913]}, {"w": "klidně", "s": 28.52, "e": 28.73, "hrud": [540, 1316], "vedle": [831, 913]}, {"w": "jednu", "s": 28.73, "e": 29.11, "hrud": [540, 1307], "vedle": [807, 931]}, {"w": "hodinu", "s": 29.11, "e": 29.64, "hrud": [540, 1307], "vedle": [826, 930]}, {"w": "dneska", "s": 29.64, "e": 29.98, "hrud": [540, 1312], "vedle": [827, 920]}, {"w": "mi", "s": 29.98, "e": 30.09, "hrud": [540, 1312], "vedle": [768, 920]}, {"w": "to", "s": 30.09, "e": 30.16, "hrud": [540, 1312], "vedle": [760, 920]}, {"w": "zabere", "s": 30.16, "e": 30.43, "hrud": [540, 1347], "vedle": [837, 933]}, {"w": "10", "s": 30.43, "e": 30.75, "hrud": [540, 1347], "vedle": [777, 933]}, {"w": "minut", "s": 30.75, "e": 31.09, "hrud": [540, 1347], "vedle": [828, 933]}, {"w": "a", "s": 31.09, "e": 31.15, "hrud": [540, 1347], "vedle": [763, 933]}, {"w": "mám", "s": 31.15, "e": 31.35, "hrud": [540, 1267], "vedle": [815, 904]}, {"w": "pro", "s": 31.35, "e": 31.53, "hrud": [540, 1267], "vedle": [798, 904]}, {"w": "tebe", "s": 31.53, "e": 31.77, "hrud": [540, 1267], "vedle": [809, 904]}, {"w": "super", "s": 31.77, "e": 32.23, "hrud": [540, 1339], "vedle": [835, 934]}, {"w": "zprávu", "s": 32.23, "e": 32.77, "hrud": [540, 1339], "vedle": [850, 934]}, {"w": "podělím", "s": 32.77, "e": 33.26, "hrud": [540, 1339], "vedle": [808, 934]}, {"w": "se", "s": 33.26, "e": 33.45, "hrud": [540, 1334], "vedle": [722, 938]}, {"w": "s", "s": 33.45, "e": 33.67, "hrud": [540, 1334], "vedle": [707, 938]}, {"w": "tebou", "s": 33.67, "e": 33.99, "hrud": [540, 1342], "vedle": [769, 941]}, {"w": "o", "s": 33.99, "e": 34.22, "hrud": [540, 1364], "vedle": [716, 951]}, {"w": "všechna", "s": 34.22, "e": 34.66, "hrud": [540, 1362], "vedle": [817, 956]}, {"w": "svá", "s": 34.66, "e": 35.23, "hrud": [540, 1362], "vedle": [753, 956]}, {"w": "tajemství", "s": 35.34, "e": 35.63, "hrud": [540, 1336], "vedle": [842, 945]}, {"w": "jak", "s": 35.63, "e": 35.83, "hrud": [540, 1336], "vedle": [760, 945]}, {"w": "vytvářet", "s": 35.83, "e": 36.27, "hrud": [540, 1336], "vedle": [830, 945]}, {"w": "kvalitní", "s": 36.27, "e": 36.65, "hrud": [540, 1333], "vedle": [811, 944]}, {"w": "obsah", "s": 36.65, "e": 37.05, "hrud": [540, 1333], "vedle": [790, 944]}, {"w": "který", "s": 37.05, "e": 37.21, "hrud": [540, 1356], "vedle": [780, 955]}, {"w": "ti", "s": 37.21, "e": 37.29, "hrud": [540, 1356], "vedle": [730, 955]}, {"w": "skutečně", "s": 37.29, "e": 37.75, "hrud": [540, 1356], "vedle": [830, 955]}, {"w": "vydělává", "s": 37.75, "e": 38.19, "hrud": [540, 1362], "vedle": [820, 943]}, {"w": "peníze", "s": 38.19, "e": 38.53, "hrud": [540, 1355], "vedle": [788, 940]}, {"w": "a", "s": 38.53, "e": 38.69, "hrud": [540, 1321], "vedle": [697, 925]}, {"w": "přitom", "s": 38.69, "e": 39.19, "hrud": [540, 1322], "vedle": [774, 923]}, {"w": "tomu", "s": 39.19, "e": 39.47, "hrud": [540, 1316], "vedle": [752, 920]}, {"w": "věnovat", "s": 39.47, "e": 39.85, "hrud": [540, 1333], "vedle": [780, 927]}, {"w": "méně", "s": 39.85, "e": 40.21, "hrud": [540, 1379], "vedle": [758, 948]}, {"w": "než", "s": 40.21, "e": 40.39, "hrud": [540, 1380], "vedle": [731, 946]}, {"w": "hodinu", "s": 40.39, "e": 40.83, "hrud": [540, 1381], "vedle": [794, 945]}, {"w": "denně", "s": 40.83, "e": 41.15, "hrud": [540, 1381], "vedle": [783, 945]}, {"w": "a", "s": 41.15, "e": 41.2, "hrud": [540, 1313], "vedle": [715, 914]}, {"w": "tohle", "s": 41.2, "e": 41.42, "hrud": [540, 1313], "vedle": [787, 914]}, {"w": "je", "s": 41.42, "e": 41.5, "hrud": [540, 1313], "vedle": [743, 914]}, {"w": "přesně", "s": 41.5, "e": 41.78, "hrud": [540, 1303], "vedle": [811, 910]}, {"w": "systém", "s": 41.78, "e": 42.3, "hrud": [540, 1299], "vedle": [813, 920]}, {"w": "díky", "s": 42.3, "e": 42.46, "hrud": [540, 1287], "vedle": [782, 911]}, {"w": "kterému", "s": 42.46, "e": 42.8, "hrud": [540, 1315], "vedle": [849, 923]}, {"w": "jsem", "s": 42.8, "e": 42.94, "hrud": [540, 1315], "vedle": [798, 923]}, {"w": "sama", "s": 42.94, "e": 43.2, "hrud": [540, 1315], "vedle": [805, 923]}, {"w": "vybudovala", "s": 43.2, "e": 43.8, "hrud": [540, 1317], "vedle": [467, 1254]}, {"w": "instagramový", "s": 43.8, "e": 44.4, "hrud": [540, 1312], "vedle": [471, 1250]}, {"w": "účet", "s": 44.4, "e": 44.78, "hrud": [540, 1314], "vedle": [816, 916]}, {"w": "s", "s": 44.78, "e": 44.96, "hrud": [540, 1309], "vedle": [772, 925]}, {"w": "20", "s": 44.96, "e": 45.22, "hrud": [540, 1309], "vedle": [791, 925]}, {"w": "tisíci", "s": 45.22, "e": 45.86, "hrud": [540, 1309], "vedle": [823, 925]}, {"w": "sledujícími", "s": 45.86, "e": 46.77, "hrud": [540, 1323], "vedle": [478, 1261]}, {"w": "takže", "s": 46.77, "e": 47.02, "hrud": [540, 1326], "vedle": [866, 921]}, {"w": "řada", "s": 47.02, "e": 47.43, "hrud": [540, 1326], "vedle": [855, 921]}, {"w": "je", "s": 47.43, "e": 47.53, "hrud": [540, 1341], "vedle": [769, 928]}, {"w": "na", "s": 47.53, "e": 47.63, "hrud": [540, 1341], "vedle": [778, 928]}, {"w": "tobě", "s": 47.63, "e": 48.01, "hrud": [540, 1341], "vedle": [804, 928]}, {"w": "napiš", "s": 48.01, "e": 48.29, "hrud": [540, 1344], "vedle": [817, 930]}, {"w": "mi", "s": 48.29, "e": 48.37, "hrud": [540, 1343], "vedle": [755, 932]}, {"w": "do", "s": 48.37, "e": 48.47, "hrud": [540, 1343], "vedle": [753, 932]}, {"w": "komentáře", "s": 48.47, "e": 48.99, "hrud": [540, 1343], "vedle": [864, 932]}, {"w": "reel", "s": 48.99, "e": 49.33, "hrud": [540, 1359], "vedle": [770, 934]}, {"w": "a", "s": 49.33, "e": 49.69, "hrud": [540, 1359], "vedle": [733, 934]}, {"w": "pošlu", "s": 49.69, "e": 49.99, "hrud": [540, 1359], "vedle": [782, 934]}, {"w": "ti", "s": 49.99, "e": 50.09, "hrud": [540, 1359], "vedle": [730, 934]}, {"w": "odkaz", "s": 50.09, "e": 50.53, "hrud": [540, 1342], "vedle": [778, 937]}, {"w": "kde", "s": 50.53, "e": 50.63, "hrud": [540, 1313], "vedle": [759, 924]}, {"w": "ti", "s": 50.63, "e": 50.73, "hrud": [540, 1313], "vedle": [730, 924]}, {"w": "naučím", "s": 50.73, "e": 51.11, "hrud": [540, 1313], "vedle": [817, 924]}, {"w": "všechno", "s": 51.11, "e": 51.97, "hrud": [540, 1320], "vedle": [842, 932]}, {"w": "co", "s": 51.97, "e": 51.99, "hrud": [540, 1320], "vedle": [765, 932]}, {"w": "sama", "s": 51.99, "e": 52.37, "hrud": [540, 1320], "vedle": [803, 932]}, {"w": "umím", "s": 52.37, "e": 53.05, "hrud": [540, 1324], "vedle": [812, 925]}], "nadpisy": [{"radky": ["CLAUDE SESTŘÍHAL", "celé tohle video"], "velke": [true, false], "od": 0.07, "do": 2.58, "y": 296, "vyzva": false, "psani": [false, true]}, {"radky": ["MÁLO ČASU"], "velke": [true], "od": 11.04, "do": 13.54, "y": 346, "vyzva": false, "psani": [false]}, {"radky": ["10 MINUT", "natáčení"], "velke": [true, false], "od": 14.34, "do": 17.04, "y": 314, "vyzva": false, "psani": [false, true]}, {"radky": ["CLAUDE", "řeší zbytek"], "velke": [true, false], "od": 17.41, "do": 20.51, "y": 291, "vyzva": false, "psani": [false, true]}, {"radky": ["DŘÍV: 1 HODINA", "jedno video"], "velke": [true, false], "od": 25.87, "do": 29.24, "y": 305, "vyzva": false, "psani": [false, true]}, {"radky": ["TEĎ: 10 MINUT"], "velke": [true], "od": 29.34, "do": 32.05, "y": 348, "vyzva": false, "psani": [false]}, {"radky": ["MŮJ SYSTÉM"], "velke": [true], "od": 32.48, "do": 34.98, "y": 353, "vyzva": false, "psani": [false]}, {"radky": ["MÉNĚ NEŽ 1 HODINA", "DENNĚ", "obsah, který prodává"], "velke": [true, true, false], "od": 39.55, "do": 42.25, "y": 259, "vyzva": false, "psani": [false, false, true]}, {"radky": ["20 000 SLEDUJÍCÍCH", "sama, bez týmu"], "velke": [true, false], "od": 44.66, "do": 47.36, "y": 308, "vyzva": false, "psani": [false, true]}, {"radky": ["Napiš do komentáře", "REEL"], "velke": [true, true], "od": 48.01, "do": 53.07, "y": 1233, "vyzva": true, "psani": [false, false]}], "zapisnik": {"od": 2.68, "do": 9.27, "nadpis": "Claude zařídil", "polozky": ["Přiblížení", "Texty na obrazovce", "Titulky", "Střih bez pauz", "Nadpisy a efekty"], "casy_rel": [1.2, 2.22, 3.14, 3.84, 4.54], "x": 160, "y": 256, "sirka": 760, "vyska": 479}, "karticky": {"od": 21.12, "do": 24.15}, "vety": [{"id": "k1-v01", "s": 0.07, "text": "Věřila bys, že celé tohle video sestříhal Claude?"}, {"id": "k1-v02", "s": 3.06, "text": "Krok za krokem přidal přiblížení, text na obrazovku, titulky"}, {"id": "k1-v03", "s": 6.22, "text": "a dokonce mi vytvořil i tenhle krásný checklist."}, {"id": "k1-v04", "s": 9.16, "text": "Jsem máma a každý den mám jenom minimum času."}, {"id": "k1-v05", "s": 12.3, "text": "A jediné, co musím dělat, je věnovat se 10 minut natáčení videa."}, {"id": "k1-v06", "s": 16.73, "text": "A o všechno ostatní se postará Claude, dokud není video připravené k publikování."}, {"id": "k1-v07", "s": 21.12, "text": "Claude používám na střih videí už nějakou dobu"}, {"id": "k1-v08", "s": 23.75, "text": "a ušetřil mi neskutečný množství času."}, {"id": "k1-v09", "s": 26.17, "text": "dřív jsem nad střihem jednoho videa strávila, klidně jednu hodinu."}, {"id": "k1-v10", "s": 29.64, "text": "Dneska mi to zabere 10 minut. A mám pro tebe super zprávu."}, {"id": "k1-v11", "s": 32.77, "text": "podělím se s tebou o všechna svá tajemství."}, {"id": "k1-v12", "s": 35.63, "text": "Jak vytvářet kvalitní obsah, který ti skutečně vydělává peníze"}, {"id": "k1-v13", "s": 38.53, "text": "a přitom tomu věnovat méně než hodinu denně."}, {"id": "k1-v14", "s": 41.15, "text": "A tohle je přesně systém, díky kterému jsem sama vybudovala"}, {"id": "k1-v15", "s": 43.8, "text": "Instagramový účet s 20 tisíci sledujícími."}, {"id": "k2-v01", "s": 46.77, "text": "Takže řada je na tobě."}, {"id": "k2-v02", "s": 48.01, "text": "Napiš mi do komentáře Reel a pošlu ti odkaz, kde ti naučím všechno, co sama umím."}]};
+const EFEKTY = [{"k": "hook", "kat": "text", "nazev": "Karta hooku", "popis": "Úvodní věta reelu na světlé kartě nahoře, jedno slovo v barvě nadpisů. Hodí se, když má hook víc než 4 slova.", "zadat": "Dodáš: text hooku a volitelně slovo, které má být barevné.", "img": "video/ef-hook.jpg", "video": "video/ef-hook.mp4"}, {"k": "vsuvka", "kat": "text", "nazev": "Vsuvka", "popis": "Jedno nebo dvě slova z věty na malé kartičce nad hlavou, ve chvíli, kdy je řekneš. Hodí se na číslo nebo jméno („10 minut“).", "zadat": "Dodáš: slovo nebo dvě z textu reelu; barevná část mezi hvězdičkami (*10* minut).", "img": "video/ef-vsuvka.jpg", "video": "video/ef-vsuvka.mp4"}, {"k": "karty_slov", "kat": "text", "nazev": "Karty slov", "popis": "Hook rozdělený na 2 až 4 kusy: velké karty za tebou přes ztmavený obraz, každá jiným písmem.", "zadat": "Dodáš: hook rozdělený na 2 až 4 kusy (NATOČÍM. / CLAUDE / stříhá.).", "img": "video/ef-karty_slov.jpg", "video": "video/ef-karty_slov.mp4"}, {"k": "velke_slovo", "kat": "text", "nazev": "Obří slovo", "popis": "Jedno slovo přes celou šířku za tvou hlavou ve chvíli, kdy ho řekneš.", "zadat": "Dodáš: slovo z věty (CLAUDE, NIKDY).", "img": "video/ef-velke_slovo.jpg", "video": "video/ef-velke_slovo.mp4"}, {"k": "casomira", "kat": "text", "nazev": "Tikající čas pod hookem", "popis": "Malé stopky 00:00:02:04 pod úvodním nadpisem, běží po snímcích.", "zadat": "Dodáš: nic, přidá se k úvodu.", "img": "video/ef-casomira.jpg", "video": "video/ef-casomira.mp4"}, {"k": "skladany_nadpis", "kat": "text", "nazev": "Skládaný nadpis", "popis": "Nadpis nad tebou přibývá po řádcích, jak mluvíš: bílé řádky a mezi nimi větší žlutá kurzíva. Hlava zakryje spodek písmen. Hodí se na úvodní větu.", "zadat": "Dodáš: úvodní větu rozdělenou na 2 až 4 řádky a který řádek má být kurzívou.", "img": "video/ef-skladany_nadpis.jpg", "video": "video/ef-skladany_nadpis.mp4"}, {"k": "rucni_poznamka", "kat": "text", "nazev": "Ruční poznámka se šipkou", "popis": "Vedle tebe se ručním písmem napíše krátká poznámka a dokreslí se šipka, která míří na tebe. Hodí se na větu o tobě („jako každá máma“).", "zadat": "Dodáš: poznámku na 1 až 2 krátké řádky.", "img": "video/ef-rucni_poznamka.jpg", "video": "video/ef-rucni_poznamka.mp4"}, {"k": "psany_skrt", "kat": "text", "nazev": "Napsáno a přeškrtnuto", "popis": "Řádek se nad tebou napíše po písmenech a pak ho přeškrtne červená čára. Hodí se na to, co už nedělat („otvírat editační aplikaci“).", "zadat": "Dodáš: řádek, který v reelu řekneš.", "img": "video/ef-psany_skrt.jpg", "video": "video/ef-psany_skrt.mp4"}, {"k": "nalepky", "kat": "text", "nazev": "Nálepky s přeškrtnutím", "popis": "Štítky s tím, co už nepotřebuješ, naskočí nad tebou jeden po druhém a každý přeškrtne čára. Hodí se na větu „žádné pauzy, žádné přeřeky“.", "zadat": "Dodáš: 1 až 3 slova, která v reelu řekneš.", "img": "video/ef-nalepky.jpg", "video": "video/ef-nalepky.mp4"}, {"k": "zprava", "kat": "text", "nazev": "Zpráva pro Clauda", "popis": "Kapsle jako v chatu nad hlavou: text se napíše po písmenech a ukáže se Odesláno. Hodí se na větu „řeknu Claudovi…“.", "zadat": "Dodáš: přesný text zprávy (v uvozovkách v textu reelu).", "img": "video/ef-zprava.jpg", "video": "video/ef-zprava.mp4"}, {"k": "zapisnik", "kat": "text", "nazev": "Zápisník s odškrtáváním", "popis": "Linkovaný papír s kroužky za tvou hlavou: položky přibývají a odškrtnou se s cinknutím ve chvíli, kdy je vyslovíš.", "zadat": "Dodáš: nadpis a 1 až 6 krátkých položek, každá začíná slovem, které ve videu řekneš.", "img": "video/ef-zapisnik.jpg", "video": "video/ef-zapisnik.mp4"}, {"k": "hravy_nadpis", "kat": "text", "nazev": "Hravý nadpis", "popis": "Nadpis se nad tebou napíše po písmenech a ty si s ním hraješ: nakloníš se a hlavou ho zakryješ, mávneš a spodní řádek odletí, zvednutou rukou ho vyneseš nahoru, v tabletu ho držíš v ruce a na konci ti slovo vyletí z pusy. Hodí se na začátek reelu a na krátká videa bez mluvení.", "zadat": "Dodáš: nadpis na 1 až 3 slova a volitelně menší řádek pod ním. Při natáčení gesto: naklonit se, zvednout ruku, tablet s tmavou obrazovkou nebo poslat pusu.", "img": "data:image/jpeg;base64,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", "video": "video/hravy-nadpis.mp4"}, {"k": "hravy_nadpis_gesta", "kat": "text", "nazev": "Hravý nadpis s gesty", "popis": "Celé krátké video bez mluvení, kde si s nadpisy hraješ: rozevřeš ruce a nadpis se rozepíše, ohneš se pod ním, sundáš ho ze svetru a hodíš nad hlavu, cvrnkneš do něj prstem a na konci pošleš pusu. Ke každému gestu zvuk. 14 s. Ukázka je tvůj reel „5 Hooků na vyzkoušení“.", "zadat": "Dodáš: 2 až 3 nadpisy a video, kde uděláš gesta za sebou (ruce nad hlavou, ohnutí, svetr a hod, cvrknutí, pusa). Hudbu přidáš v Instagramu.", "img": "data:image/jpeg;base64,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", "video": "video/hravy-nadpis-gesta.mp4"}, {"k": "vyzva", "kat": "ig", "nazev": "Karta výzvy", "popis": "Poslední věta s výzvou do komentáře na hrudi, slovo pro komentář větší kurzívou. Jako jediná zůstává před tebou, aby šla přečíst.", "zadat": "Dodáš: slovo pro komentář (STUDIO, REEL); musí v reelu zaznít.", "img": "video/ef-vyzva.jpg", "video": "video/ef-vyzva.mp4"}, {"k": "ig_komentar", "kat": "ig", "nazev": "Komentář jako na Instagramu", "popis": "Nad hlavou výzva, do pole komentáře se napíše slovo, odešle se a hned pod ním přijde tvoje odpověď.", "zadat": "Dodáš: slovo pro komentář, tvou odpověď (1 věta) a profilovou fotku.", "img": "video/ef-ig_komentar.jpg", "video": "video/ef-ig_komentar.mp4"}, {"k": "ig_sledovat", "kat": "ig", "nazev": "Tlačítko Sledovat", "popis": "Karta tvého profilu s tlačítkem Sledovat, které se po ťuknutí změní na Sledováno. Hodí se na konec reelu.", "zadat": "Dodáš: jméno účtu, řádek pod ním a profilovou fotku.", "img": "video/ef-ig_sledovat.jpg", "video": "video/ef-ig_sledovat.mp4"}, {"k": "sprej", "kat": "ig", "nazev": "Nápis sprejem", "popis": "Slovo pro komentář se nastříká růžovým sprejem a stečou z něj kapky, pod ním se napíše malý řádek. Hodí se na výzvu na konci.", "zadat": "Dodáš: slovo do 10 písmen a malý řádek pod ním. Ve videu můžeš držet sprej nebo jen pohnout rukou zleva doprava.", "img": "video/ef-sprej.jpg", "video": "video/ef-sprej.mp4"}, {"k": "papir_profil", "kat": "ig", "nazev": "Profil s nůžkami", "popis": "Hlavička tvého profilu jako papírová karta nad hlavou. Když sevřeš nůžky, rozstřihne se a půlky spadnou.", "zadat": "Dodáš: jméno účtu, 3 čísla z profilu a video, kde v daný moment střihneš nůžkami.", "img": "video/ef-papir_profil.jpg", "video": "video/ef-papir_profil.mp4"}, {"k": "papir_otazka", "kat": "ig", "nazev": "Nálepka s otázkou", "popis": "Nálepka Otázka, do které se po písmenech napíše tvoje otázka. Když foukneš fénem nebo mávneš rukou, odletí.", "zadat": "Dodáš: text otázky a video, kde foukneš fénem nebo mávneš.", "img": "video/ef-papir_otazka.jpg", "video": "video/ef-papir_otazka.mp4"}, {"k": "papir_komentare", "kat": "ig", "nazev": "Padající komentáře", "popis": "Komentáře diváků („Jak se to dělá?“) spadnou nad tvou hlavu jeden po druhém a pak padají dolů za tebe.", "zadat": "Dodáš: 1 až 3 krátké komentáře.", "img": "video/ef-papir_komentare.jpg", "video": "video/ef-papir_komentare.mp4"}, {"k": "vlozka", "kat": "obr", "nazev": "Obrázek v rámečku", "popis": "Tvůj screenshot nebo fotka v zaobleném rámečku nad hlavou, s popiskem. Hodí se na větu „ukážu ti / tady vidíš“.", "zadat": "Dodáš: obrázek PNG, JPG nebo WEBP a krátký popisek.", "img": "video/ef-vlozka.jpg", "video": "video/ef-vlozka.mp4"}, {"k": "karticky", "kat": "obr", "nazev": "Kartičky s printscreeny", "popis": "3 až 5 obrázků s náklonem a bílým rámem vplouvá za tebe jeden po druhém.", "zadat": "Dodáš: 3 až 5 screenshotů nebo fotek.", "img": "video/ef-karticky.jpg", "video": "video/ef-karticky.mp4"}, {"k": "mrizka", "kat": "obr", "nazev": "Mřížka reelů", "popis": "Obálky tvých reelů se rozloží do mřížky 2 × 3 nebo 3 × 3 přes ztmavený obraz. Hodí se na větu „celý týden obsahu“.", "zadat": "Dodáš: 2 až 9 obálek reelů (9:16).", "img": "video/ef-mrizka.jpg", "video": "video/ef-mrizka.mp4"}, {"k": "orbit", "kat": "obr", "nazev": "Efekt Orbit", "popis": "Obálky reelů se točí kolem tebe jako prsten: vzadu jdou za tebou, vepředu pod obličejem. Hodí se na první 3 až 5 s reelu.", "zadat": "Dodáš: 4 až 8 obálek reelů (9:16).", "img": "video/ef-orbit.jpg", "video": "video/ef-orbit.mp4"}, {"k": "zed", "kat": "obr", "nazev": "Efekt Instagram zeď", "popis": "Obálky tvých reelů vyjedou zpoza tebe jako mřížka profilu a feed se pomalu posouvá. Hodí se na větu „podívej, co všechno jsem natočila“.", "zadat": "Dodáš: 4 až 12 obálek reelů nebo nahrávku obrazovky profilu.", "img": "video/ef-zed.jpg", "video": "video/ef-zed.mp4"}, {"k": "roj_karet", "kat": "obr", "nazev": "Roj karet", "popis": "Náhledy tvých záběrů nebo obálek vyletí od tebe do všech stran, chvíli se vznášejí a pak spadnou dolů. Hodí se na větu „natočím spoustu klipů“.", "zadat": "Dodáš: 4 až 16 obálek reelů nebo klipů (z videa si studio vezme jeden snímek).", "img": "video/ef-roj_karet.jpg", "video": "video/ef-roj_karet.mp4"}, {"k": "slozka", "kat": "obr", "nazev": "Složka s klipy", "popis": "Nad hlavou se objeví bílé okno, hromádka tvých klipů přeletí do modré složky a na složce naskočí číslo. Hodí se na větu „nahraju videa do složky“.", "zadat": "Dodáš: 1 až 4 klipy nebo fotky a název složky (výchozí „moje videa“).", "img": "video/ef-slozka.jpg", "video": "video/ef-slozka.mp4"}, {"k": "pas_karet", "kat": "obr", "nazev": "Pás karet", "popis": "Nad hlavou vyjede řada vysokých karet (b-roll, obálky, fotky) a pomalu jede doleva. Videa v kartách hrají bez zvuku. Hodí se na větu o b-rollu.", "zadat": "Dodáš: 2 až 8 obálek, fotek nebo krátkých videí.", "img": "video/ef-pas_karet.jpg", "video": "video/ef-pas_karet.mp4"}, {"k": "ikony", "kat": "obr", "nazev": "Ikony aplikací", "popis": "Ikony aplikací naskočí nad hlavou jedna po druhé, s popiskem a volitelně přeškrtnuté. Hodí se na větu „žádný CapCut, žádný Edits“.", "zadat": "Dodáš: 2 až 5 obrázků ikon (stačí snímek plochy telefonu) a popisky.", "img": "video/ef-ikony.jpg", "video": "video/ef-ikony.mp4"}, {"k": "videa_okna", "kat": "obr", "nazev": "Okna se surovými videi", "popis": "Okénka s tvými surovými záběry vedle sebe nad hlavou, hrají bez zvuku, volitelně se štítkem NEPOVEDENÝ ZÁBĚR. Hodí se na větu „kolik videí jsem nahrála“.", "zadat": "Dodáš: nic navíc, studio vezme úseky z tvých natočených videí.", "img": "video/ef-videa_okna.jpg", "video": "video/ef-videa_okna.mp4"}, {"k": "obalka_casopisu", "kat": "obr", "nazev": "Obálka časopisu", "popis": "Za tebou vyroste obálka časopisu: tenký rám, velký název, drobné titulky a čárový kód. Název leží za hlavou jako na opravdové obálce.", "zadat": "Dodáš: název časopisu a 1 až 2 krátké titulky.", "img": "video/ef-obalka_casopisu.jpg", "video": "video/ef-obalka_casopisu.mp4"}, {"k": "plakat", "kat": "obr", "nazev": "Plakát za tebou", "popis": "Ve chvíli, kdy řekneš dané slovo, se za tebou na zdi rozsvítí tvůj plakát. Bez vypínače a bez skoku, ty stojíš před ním.", "zadat": "Dodáš: hotový plakát (třeba z Canvy, poměr 2:3) a slovo, kdy se rozsvítí. Natáčíš ze stativu, celá postava, prázdná zeď.", "img": "video/ef-plakat.jpg", "video": "video/ef-plakat.mp4"}, {"k": "vypinac_plakat", "kat": "obr", "nazev": "Vypínač a plakát", "popis": "Na zdi nad tebou je vypínač jako v telefonu. Sáhneš nahoru, vypínač cvakne, zezelená a za tebou se rozsvítí plakát. Studio samo najde chvíli, kdy máš ruku nejvýš.", "zadat": "Dodáš: video ze stativu, 8 až 10 s, prázdná zeď, ty vejdeš z boku, sáhneš nahoru a odejdeš. K tomu hotový plakát (2:3).", "img": "video/ef-vypinac_plakat.jpg", "video": "video/ef-vypinac_plakat.mp4"}, {"k": "casova_osa", "kat": "strih", "nazev": "Časová osa střihu", "popis": "Nad hlavou se ukáže střihový program s tvými záběry, vlnou zvuku a běžící čárou přehrávání. Hodí se na větu „o střihu nic nevím“.", "zadat": "Dodáš: nic, náhledy a zvuk jsou z tvého videa.", "img": "video/ef-casova_osa.jpg", "video": "video/ef-casova_osa.mp4"}, {"k": "storyboard", "kat": "strih", "nazev": "Storyboard", "popis": "Za tebou se pomalu posouvá plán tvého reelu: čas, záběr, věta a efekty. Je složený ze skutečného plánu tohoto reelu.", "zadat": "Dodáš: nic.", "img": "video/ef-storyboard.jpg", "video": "video/ef-storyboard.mp4"}, {"k": "pred_po", "kat": "strih", "nazev": "Před a po", "popis": "Přes video přejede svislá čára. Vlevo od ní je obraz jako z telefonu, vpravo hotový. Druhá možnost: přes obraz se shora přetáhne nová barva ve chvíli, kdy to řekneš.", "zadat": "Dodáš: větu, u které se má čára rozjet (třeba „a tady je hotové video“). Nic nenatáčíš navíc.", "img": "video/ef-pred_po.jpg", "video": "video/ef-pred_po.mp4"}, {"k": "karta_vzhledu", "kat": "strih", "nazev": "Karta vzhledu", "popis": "Malá bílá karta „tvůj vzhled“ s ukázkou písma Aa a barvami značky. Po chvíli se písmo a barvy vymění. Hodí se na větu „sedí to k mé značce“.", "zadat": "Dodáš: nic, studio vezme písmo a barvy z tvého stylu (druhá varianta volitelně).", "img": "video/ef-karta_vzhledu.jpg", "video": "video/ef-karta_vzhledu.mp4"}, {"k": "pocitadlo", "kat": "strih", "nazev": "Překlápěcí časovač", "popis": "Nad hlavou hodiny s listy: SUROVÝ ZÁZNAM 3:52 se překlopí na HOTOVÝ REEL 1:16. Hodí se na větu „za pár minut mám hotovo“.", "zadat": "Dodáš: dva popisky a dva časy (třeba délku surového videa a hotového reelu).", "img": "video/ef-pocitadlo.jpg", "video": "video/ef-pocitadlo.mp4"}];
+(function () {
+  const $ = (s) => document.querySelector(s);
+  const toast = (t) => { const el = $("#toast"); el.textContent = t; el.classList.add("je"); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("je"), 2200); };
+  const W = 1080, H = 1920;
+  const FONTY = [
+    { k: "Montserrat", n: "Montserrat", p: "tučné bezpatkové", css: "Montserrat, Arial, sans-serif", w: 800 },
+    { k: "Playfair Display", n: "Playfair Display", p: "patkové, časopis", css: "'Playfair Display', Georgia, serif", w: 700 },
+    { k: "Instrument Serif", n: "Instrument Serif", p: "úzká kurzíva", css: "'Instrument Serif', Georgia, serif", w: 400 },
+    { k: "Mulish", n: "Mulish", p: "měkké, čisté", css: "Mulish, Arial, sans-serif", w: 800 },
+    { k: "Bodoni Moda", n: "Bodoni Moda", p: "módní časopis", css: "'Bodoni Moda', Didot, Georgia, serif", w: 700 },
+    { k: "DM Serif Display", n: "DM Serif Display", p: "výrazné patkové", css: "'DM Serif Display', Georgia, serif", w: 400 },
+    { k: "Fraunces", n: "Fraunces", p: "hravé patkové", css: "Fraunces, Georgia, serif", w: 700 },
+    { k: "Inter", n: "Inter", p: "moderní, čitelné", css: "Inter, Arial, sans-serif", w: 800 },
+    { k: "DM Sans", n: "DM Sans", p: "jednoduché, kulaté", css: "'DM Sans', Arial, sans-serif", w: 800 },
+    { k: "Courier Prime", n: "Courier Prime", p: "psací stroj", css: "'Courier Prime', 'Courier New', monospace", w: 700 }
+  ];
+  const BARVY = [
+    { n: "Krémová", c: "#F6EBD0" }, { n: "Bílá", c: "#FFFFFF" }, { n: "Žlutá", c: "#FFD43B" }, { n: "Oranžová", c: "#FF8C42" },
+    { n: "Červená", c: "#E5383B" }, { n: "Růžová", c: "#F28AB2" }, { n: "Fialová", c: "#A66CFF" }, { n: "Modrá", c: "#4EA8DE" },
+    { n: "Zelená", c: "#52B788" }, { n: "Tmavě modrá", c: "#1D3557" }, { n: "Černá", c: "#111111" }, { n: "Barvy značky Marcely", c: "#D48BA0" }
+  ];
+  const POLOHY = [
+    { k: "hrud", n: "Na hrudi", p: "uprostřed mezi rukama" },
+    { k: "vedle", n: "Vedle hlavy", p: "na volnější straně" },
+    { k: "dole", n: "Dole", p: "nad lištou Instagramu" }
+  ];
+  const POLOHY_N = [
+    { k: "nahore", n: "Nahoře", p: "nad hlavou, za tebou" },
+    { k: "stred", n: "Uprostřed videa", p: "za tebou, hodí se, když stojíš dál" }
+  ];
+  const BARVY_T = [
+    { k: "bila", n: "Bílá", p: "čitelná vždycky", c: "#FFFFFF" },
+    { k: "cerna", n: "Černá", p: "na světlém pozadí", c: "#111111" },
+    { k: "vlastni", n: "Vlastní", p: "napiš kód barvy", c: null }
+  ];
+  const REZIMY_T = [
+    { k: "slovo", n: "Po jednom slově", p: "vždy slovo, které říkáš" },
+    { k: "veta", n: "Celé věty", p: "kus věty, 1 až 2 řádky" },
+    { k: "veta_zvyr", n: "Věty se zvýrazněným slovem", p: "slovo, které říkáš, v barvě nadpisů" }
+  ];
+  const ZVUKY = [
+    { k: "klavesa", n: "Klávesnice", p: "při psaní podnadpisu" },
+    { k: "cink", n: "Cink", p: "u každé fajfky" },
+    { k: "whoosh", n: "Švih", p: "když přijede nadpis" },
+    { k: "klik", n: "Klik", p: "když se objeví obrázek" }
+  ];
+  /* Hotové styly zrušené (Marcela 3. 11. 2026): základ je nadpis a titulky, efekty se přidávají zvlášť.
+     Vzhled titulků odpovídá vzhledu studia (titulky.STYLY), do kódu stylu jde jako „styl: …“. */
+  const TIT_VZHLEDY = [
+    { k: "vlastni", n: "Čisté písmo", p: "bez pozadí, se stínem" },
+    { k: "svestkovy_editor", n: "Švestkový rámeček", p: "tmavý obdélník #4A3340", ram: "rgba(74,51,64,.95)" },
+    { k: "zeleny_editor", n: "Zelený rámeček", p: "tmavě zelený obdélník", ram: "rgba(22,48,38,.95)" },
+    { k: "slovo_a_kurziva", n: "Důležitá slova kurzívou", p: "slovo na konci věty žlutě", klicova: true, velikost: 152 }
+  ];
+  const tv = () => TIT_VZHLEDY.find(v => v.k === stav.titVzhled) || TIT_VZHLEDY[0];
+  const VYCHOZI = { titVzhled: "vlastni", polohaN: "nahore", titRezim: "slovo", barvaT: "bila", barvaTvl: "#FFFFFF", barva: "#F6EBD0", cb: false,
+    fontN: "Montserrat", fontT: "Playfair Display", poloha: "hrud", velikost: 100, efekty: ["zapisnik", "vyzva"], zvuky: ["klavesa", "cink"] };
+  const VZDY = ["titulky", "zoom", "mini"];          // základ: titulky, přiblížení a nadpisy (krok 2 a 3)
+  const NA_VIDEU = ["zapisnik", "vyzva"];
+  // efekty, pro které se natáčí zvlášť (gesto, rekvizita nebo celá postava u zdi)
+  const ZABER = ["hravy_nadpis", "hravy_nadpis_gesta", "papir_profil", "papir_otazka", "plakat", "vypinac_plakat"];
+  const KATEGORIE = [{ k: "vse", n: "Vše" }, { k: "text", n: "Text a nadpisy" }, { k: "ig", n: "Výzva a Instagram" },
+    { k: "obr", n: "Obrázky a videa" }, { k: "strih", n: "Jak vzniká reel" }];
+
+  let stav = structuredClone(VYCHOZI);
+  stav.efekty = new Set([...stav.efekty, ...VZDY]); stav.zvuky = new Set(stav.zvuky); stav.hlasitost = 70;
+  let filtr = "vse";
+  let fotky = [];   // {id?, url, veta}
+  const NAZEV_EF = Object.fromEntries(EFEKTY.map(e => [e.k, e.nazev]));
+
+  /* ---------- tlačítka voleb ---------- */
+  function tlacitko(text, pod, aktivni, onclick, styl) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "volba"; b.setAttribute("aria-pressed", aktivni ? "true" : "false");
+    const t = document.createElement("span"); t.textContent = text; if (styl) Object.assign(t.style, styl); if (styl) t.className = "ukazka";
+    b.appendChild(t);
+    if (pod) { const s = document.createElement("small"); s.textContent = pod; b.appendChild(s); }
+    b.onclick = onclick; return b;
+  }
+  function vykresliVolby() {
+    const vt = $("#vzhled-t"); vt.innerHTML = "";
+    for (const v of TIT_VZHLEDY) vt.appendChild(tlacitko(v.n, v.p, stav.titVzhled === v.k, () => {
+      if ((tv().velikost || 100) !== (v.velikost || 100)) stav.velikost = v.velikost || 100;
+      stav.titVzhled = v.k; zmena(); }));
+    const bv = $("#barvy"); bv.innerHTML = "";
+    for (const b of BARVY) {
+      const el = document.createElement("button"); el.type = "button"; el.className = "barva"; el.title = b.n; el.setAttribute("aria-label", b.n);
+      el.style.background = b.c; el.setAttribute("aria-pressed", stav.barva.toLowerCase() === b.c.toLowerCase() ? "true" : "false");
+      el.onclick = () => { stav.barva = b.c; zmena(); }; bv.appendChild(el);
+    }
+    const ob = $("#obraz"); ob.innerHTML = "";
+    ob.appendChild(tlacitko("Barevný", "jak jsi natočila", !stav.cb, () => { stav.cb = false; zmena(); }));
+    ob.appendChild(tlacitko("Černobílý", "editorial, Vogue", stav.cb, () => { stav.cb = true; zmena(); }));
+    for (const [id, klic] of [["#fonty-nadpis", "fontN"], ["#fonty-titulky", "fontT"]]) {
+      const el = $(id); el.innerHTML = "";
+      for (const f of FONTY) el.appendChild(tlacitko(f.n, f.p, stav[klic] === f.k, () => { stav[klic] = f.k; zmena(); }, { fontFamily: f.css, fontWeight: f.w, fontStyle: f.k === "Instrument Serif" ? "italic" : "normal" }));
+    }
+    const bt = $("#barva-titulku"); bt.innerHTML = "";
+    for (const b of BARVY_T) {
+      const el = tlacitko(b.n, b.p, stav.barvaT === b.k, () => { stav.barvaT = b.k; zmena(); if (b.k === "vlastni") $("#hex-t").focus(); });
+      if (b.c) { const v = document.createElement("span"); v.className = "vzorek"; v.style.cssText = "width:16px;height:16px;display:inline-block;vertical-align:-3px;margin-right:6px;background:" + b.c; el.firstChild.prepend(v); }
+      bt.appendChild(el);
+    }
+    $("#hex-t-radek").hidden = stav.barvaT !== "vlastni";
+    nastavHex("t", stav.barvaTvl); nastavHex("n", stav.barva);
+    const pn = $("#poloha-n"); pn.innerHTML = "";
+    for (const p of POLOHY_N) pn.appendChild(tlacitko(p.n, p.p, stav.polohaN === p.k, () => { stav.polohaN = p.k; zmena(); }));
+    const rt = $("#rezim-t"); rt.innerHTML = "";
+    for (const r of REZIMY_T) rt.appendChild(tlacitko(r.n, r.p, stav.titRezim === r.k, () => { stav.titRezim = r.k; zmena(); }));
+    const po = $("#poloha"); po.innerHTML = "";
+    for (const p of POLOHY) po.appendChild(tlacitko(p.n, p.p, stav.poloha === p.k, () => { stav.poloha = p.k; zmena(); }));
+    const zv = $("#zvuky"); zv.innerHTML = "";
+    for (const z of ZVUKY) zv.appendChild(tlacitko(z.n, z.p, stav.zvuky.has(z.k), () => { stav.zvuky.has(z.k) ? stav.zvuky.delete(z.k) : stav.zvuky.add(z.k); zahraj(z.k, 1); zmena(); }));
+    zv.appendChild(tlacitko("Bez zvuků", "jen tvůj hlas", stav.zvuky.size === 0, () => { stav.zvuky.clear(); zmena(); }));
+    $("#velikost").value = stav.velikost; $("#velikost-h").textContent = stav.velikost + " %";
+    $("#hlasitost").value = stav.hlasitost; $("#hlasitost-h").textContent = stav.hlasitost + " %";
+    const fi = $("#filtr"); fi.innerHTML = "";
+    for (const k of KATEGORIE) fi.appendChild(tlacitko(k.n, null, filtr === k.k, () => { filtr = k.k; vykresliEfekty(); vykresliVolby(); }));
+  }
+  const pohyb = !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const pozorovatel = ("IntersectionObserver" in window) ? new IntersectionObserver((zaznamy) => {
+    for (const z of zaznamy) { if (z.isIntersecting && pohyb) z.target.play().catch(() => {}); else z.target.pause(); }
+  }, { threshold: 0.6 }) : null;
+  /* ---------- velký náhled efektu (Marcela 9. 11. 2026) ----------
+     Ukázka z karty hraje ve velkém telefonu přes náhled tvé volby, dokud ji nezavřeš nebo nepustíš Přehrát. */
+  let ukazuji = null;
+  const ukazka = $("#ukazka");
+  function ukazEfekt(e) {
+    ukazuji = e.k; video.pause();
+    ukazka.src = e.video; ukazka.poster = e.img || ""; ukazka.hidden = false;
+    ukazka.play().catch(() => {});
+    vrstva.hidden = vrstvaPred.hidden = true; popredi.hidden = true;
+    $("#znacka").textContent = "Ukázka: " + e.nazev; $("#zavrit-ukazku").hidden = false;
+    document.querySelectorAll(".efekt.ted").forEach(x => x.classList.remove("ted"));
+    const k = document.querySelector('.efekt[data-k="' + e.k + '"]'); if (k) k.classList.add("ted");
+    const r = $("#telefon").getBoundingClientRect();
+    if (r.bottom < 60 || r.top > innerHeight - 60) window.scrollTo(0, Math.max(0, scrollY + r.top - 12));
+  }
+  function zavriUkazku() {
+    if (!ukazuji) return;
+    ukazuji = null; ukazka.pause(); ukazka.hidden = true; ukazka.removeAttribute("src"); ukazka.load();
+    vrstva.hidden = vrstvaPred.hidden = hotovyRezim; $("#zavrit-ukazku").hidden = true;
+    $("#znacka").textContent = hotovyRezim ? "Hotový reel ze studia" : "Náhled tvé volby";
+    document.querySelectorAll(".efekt.ted").forEach(x => x.classList.remove("ted"));
+    posledni = ""; posledniSnimek = -1; if (!hotovyRezim) kresli();
+  }
+  function vykresliEfekty() {
+    const box = $("#efekty"); box.innerHTML = ""; if (pozorovatel) pozorovatel.disconnect();
+    for (const e of EFEKTY) {
+      if (filtr !== "vse" && e.kat !== filtr) continue;
+      const karta = document.createElement("div"); karta.className = "efekt"; karta.dataset.k = e.k;
+      const b = document.createElement("button"); b.type = "button"; b.className = "vyber";
+      const vzdy = VZDY.includes(e.k), vybrano = vzdy || stav.efekty.has(e.k);
+      b.setAttribute("aria-pressed", vybrano ? "true" : "false"); karta.classList.toggle("vybrano", vybrano);
+      karta.classList.toggle("ted", ukazuji === e.k);
+      const n = document.createElement("div"); n.className = "nahl";
+      if (e.video) { const v = document.createElement("video"); v.src = e.video; v.poster = e.img; v.muted = true; v.loop = true; v.playsInline = true; v.preload = "none";
+        v.setAttribute("aria-hidden", "true"); b.onmouseenter = () => v.play().catch(() => {}); n.appendChild(v); if (pozorovatel) pozorovatel.observe(v); }
+      else if (e.img) { const i = document.createElement("img"); i.src = e.img; i.alt = ""; i.loading = "lazy"; n.appendChild(i); }
+      const t = document.createElement("div"); t.className = "txt";
+      const nb = document.createElement("b"); nb.textContent = e.nazev;
+      const ns = document.createElement("span"); ns.textContent = e.popis.replace(/<[^>]+>/g, "");
+      t.append(nb, ns);
+      // Co dodáš (Marcela 9. 11. 2026): studentka vidí předem, co připravit a co natočit
+      if (e.zadat) { const d = document.createElement("span"); d.className = "dodas";
+        const db_ = document.createElement("b"); db_.textContent = "Co dodáš: "; d.append(db_, e.zadat.replace(/^Dodáš:\s*/, "")); t.appendChild(d); }
+      if (NA_VIDEU.includes(e.k)) { const v = document.createElement("span"); v.textContent = "✓ i v náhledu vlevo"; v.style.color = "var(--fg)"; t.appendChild(v); }
+      const f = document.createElement("span"); f.className = "fajf";
+      if (ZABER.includes(e.k)) { const z = document.createElement("span"); z.className = "zaber"; z.textContent = "Potřebuje zvláštní záběr"; n.appendChild(z); }
+      b.append(n, t, f); karta.appendChild(b);
+      if (vzdy) { const z = document.createElement("span"); z.className = "vzdy"; z.textContent = "vždy"; karta.appendChild(z); }
+      else if (e.video) {
+        const u = document.createElement("button"); u.type = "button"; u.className = "ukaz"; u.textContent = "▶ Velký náhled";
+        u.setAttribute("aria-label", "Pustit ukázku efektu " + e.nazev + " ve velkém náhledu");
+        u.onclick = () => ukazEfekt(e); karta.appendChild(u);
+      }
+      // klik na kartu efekt vybere (a hned ho ukáže velký vlevo) nebo zruší
+      b.onclick = () => { if (vzdy) return; const pridat = !stav.efekty.has(e.k);
+        pridat ? stav.efekty.add(e.k) : stav.efekty.delete(e.k);
+        if (pridat && e.video) ukazEfekt(e); else if (!pridat && ukazuji === e.k) zavriUkazku();
+        vykresliEfekty(); zmena(true); };
+      box.appendChild(karta);
+    }
+  }
+  const HEX = /^#?[0-9a-fA-F]{6}$/;
+  function nastavHex(kde, c) {
+    const t = $("#hex-" + kde), pk = $("#pick-" + kde), vz = $("#vzorek-" + kde);
+    if (document.activeElement !== t) { t.value = (c || "").toUpperCase(); t.removeAttribute("aria-invalid"); }
+    if (HEX.test(c || "")) { pk.value = c.toLowerCase(); vz.style.background = c; }
+  }
+  for (const kde of ["n", "t"]) {
+    const uloz = (c) => { if (kde === "n") stav.barva = c; else { stav.barvaTvl = c; stav.barvaT = "vlastni"; } zmena(); };
+    $("#hex-" + kde).addEventListener("input", (ev) => {
+      let v = ev.target.value.trim(); if (v && v[0] !== "#") v = "#" + v;
+      const ok = HEX.test(v); ev.target.setAttribute("aria-invalid", ok || v.length < 7 ? "false" : "true");
+      if (ok) uloz(v.toUpperCase());
+    });
+    $("#hex-" + kde).addEventListener("blur", (ev) => { nastavHex(kde, kde === "n" ? stav.barva : stav.barvaTvl); });
+    $("#pick-" + kde).addEventListener("input", (ev) => uloz(ev.target.value.toUpperCase()));
+  }
+  $("#velikost").addEventListener("input", (ev) => { stav.velikost = +ev.target.value; $("#velikost-h").textContent = stav.velikost + " %"; zmena(true); });
+  $("#hlasitost").addEventListener("input", (ev) => { stav.hlasitost = +ev.target.value; $("#hlasitost-h").textContent = stav.hlasitost + " %"; zmena(true, true); });
+
+  /* ---------- zvuky (vlastní syntéza, stejné jako ve studiu) ---------- */
+  let ac = null;
+  function audio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } } return ac; }
+  function sumBuffer(c, delka) { const b = c.createBuffer(1, Math.ceil(c.sampleRate * delka), c.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
+  function zahraj(typ, sila) {
+    const c = audio(); if (!c) return; if (c.state === "suspended") c.resume();
+    const g0 = c.createGain(); g0.gain.value = (stav.hlasitost / 100) * (sila || 1); g0.connect(c.destination);
+    const t = c.currentTime;
+    if (typ === "klavesa") {
+      const s = c.createBufferSource(); s.buffer = sumBuffer(c, 0.03); const hp = c.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 2200;
+      const g = c.createGain(); g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+      s.connect(hp).connect(g).connect(g0); s.start(t);
+      const o = c.createOscillator(); o.frequency.value = 190 + Math.random() * 70; const g2 = c.createGain(); g2.gain.setValueAtTime(0.25, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+      o.connect(g2).connect(g0); o.start(t); o.stop(t + 0.06);
+    } else if (typ === "cink") {
+      [[0, 1568, .5], [0.06, 2093, .6]].forEach(([z, f, a]) => { const o = c.createOscillator(); o.frequency.value = f; const g = c.createGain();
+        g.gain.setValueAtTime(0.0001, t + z); g.gain.exponentialRampToValueAtTime(a, t + z + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + z + 0.45);
+        o.connect(g).connect(g0); o.start(t + z); o.stop(t + z + 0.5); });
+    } else if (typ === "whoosh") {
+      const s = c.createBufferSource(); s.buffer = sumBuffer(c, 0.4); const lp = c.createBiquadFilter(); lp.type = "lowpass";
+      lp.frequency.setValueAtTime(250, t); lp.frequency.exponentialRampToValueAtTime(3200, t + 0.35);
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.07); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+      s.connect(lp).connect(g).connect(g0); s.start(t);
+    } else if (typ === "klik") {
+      const o = c.createOscillator(); o.frequency.setValueAtTime(900, t); o.frequency.exponentialRampToValueAtTime(320, t + 0.11);
+      const g = c.createGain(); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      o.connect(g).connect(g0); o.start(t); o.stop(t + 0.13);
+    }
+  }
+
+  /* ---------- události z reelu ---------- */
+  const PISMENO = 0.045;
+  function udalosti() {
+    const u = [];
+    for (const n of DATA.nadpisy) {
+      const jeVyzva = n.vyzva;
+      if (jeVyzva && !stav.efekty.has("vyzva")) continue;
+      if (!jeVyzva && !stav.efekty.has("mini") && !(n === DATA.nadpisy[0] && stav.efekty.has("hook"))) continue;
+      u.push({ t: n.od, co: (jeVyzva ? "výzva · " : "nadpis · ") + "„" + n.radky.join(" / ") + "“", zvuk: stav.zvuky.has("whoosh") ? "whoosh" : null });
+      n.radky.forEach((r, i) => { if (n.psani[i]) {
+        u.push({ t: n.od + 0.35, co: "psaní po písmenech · „" + r + "“", zvuk: stav.zvuky.has("klavesa") ? "klavesa ×" + r.replace(/\s/g, "").length : null, klavesy: { od: n.od + 0.35, text: r } }); } });
+    }
+    if (stav.efekty.has("zapisnik")) {
+      const z = DATA.zapisnik;
+      u.push({ t: z.od, co: "zápisník · „" + z.nadpis + "“", zvuk: null });
+      z.polozky.forEach((p, i) => u.push({ t: z.od + z.casy_rel[i] + 0.15, co: "fajfka · „" + p + "“", zvuk: stav.zvuky.has("cink") ? "cink" : null }));
+    }
+    if (stav.efekty.has("karticky")) u.push({ t: DATA.karticky.od, co: "obálky reelů za hlavou", zvuk: stav.zvuky.has("klik") ? "klik" : null });
+    for (const f of fotky) { const v = DATA.vety.find(x => x.id === f.veta); if (v) u.push({ t: v.s, co: "tvoje fotka · „" + v.text.slice(0, 40) + "…“", zvuk: stav.zvuky.has("klik") ? "klik" : null }); }
+    return u.sort((a, b) => a.t - b.t);
+  }
+  function zvukoveBody(u) {
+    const b = [];
+    for (const x of u) {
+      if (!x.zvuk) continue;
+      if (x.klavesy) { [...x.klavesy.text].forEach((ch, j) => { if (!/\s/.test(ch)) b.push({ t: x.klavesy.od + j * PISMENO, typ: "klavesa" }); }); }
+      else b.push({ t: x.t, typ: x.zvuk });
+    }
+    return b.sort((a, c) => a.t - c.t);
+  }
+  let UD = [], BODY = [];
+
+  /* ---------- přepis ---------- */
+  function vykresliPrepis() {
+    const casy = UD.map(x => x.t);
+    const box = $("#prepis"); box.innerHTML = "";
+    DATA.slova.forEach((w, i) => {
+      const s = document.createElement("span"); s.textContent = w.w; s.dataset.i = i;
+      const dalsi = DATA.slova[i + 1] ? DATA.slova[i + 1].s : w.e + 1;
+      if (casy.some(t => t >= w.s - 0.12 && t < dalsi - 0.05)) s.classList.add("ud");
+      s.onclick = () => { video.currentTime = w.s; kresli(); };
+      box.append(s, " ");
+    });
+    const osa = $("#osa"); osa.innerHTML = "";
+    for (const x of UD) {
+      const tr = document.createElement("tr"); tr.dataset.t = x.t;
+      tr.innerHTML = "<td></td><td></td><td></td>";
+      tr.children[0].textContent = x.t.toFixed(2).replace(".", ",") + " s"; tr.children[1].textContent = x.co; tr.children[2].textContent = x.zvuk || "bez zvuku";
+      tr.onclick = () => { video.currentTime = Math.max(0, x.t - 0.3); kresli(); };
+      osa.appendChild(tr);
+    }
+  }
+
+  /* ---------- náhled na videu ---------- */
+  const video = $("#video"), vrstva = $("#vrstva"), vrstvaPred = $("#vrstva-pred"), popredi = $("#popredi");
+  /* Pravidlo Marcely (3. 11. 2026): efekty nikdy přes hlavu, vždycky za osobou. Video má pod obrazem masku osoby
+     (studio.maska, stejná jako při renderu); osoba se vyřízne a položí přes vrstvu efektů. Titulky a výzva jsou vpředu. */
+  const pctx = popredi.getContext("2d");
+  const prac = document.createElement("canvas"); prac.width = 540; prac.height = 1920;
+  const wctx = prac.getContext("2d", { willReadFrequently: true });
+  const ALFA = new Uint8ClampedArray(256).map((_, v) => Math.round(Math.min(255, Math.max(0, (v - 28) * 255 / 200))));
+  let maskaOk = true, posledniSnimek = -1;
+  function kresliPopredi(jeZa) {
+    if (!jeZa || hotovyRezim || !maskaOk || video.readyState < 2 || video.videoHeight < video.videoWidth * 3) { popredi.hidden = true; return; }
+    const sn = Math.round((video.currentTime || 0) * 30);
+    if (sn === posledniSnimek && !popredi.hidden) return;
+    try {
+      wctx.drawImage(video, 0, 0, 540, 1920);
+      const obraz = wctx.getImageData(0, 0, 540, 960), d = obraz.data, m = wctx.getImageData(0, 960, 540, 960).data;
+      for (let i = 3; i < d.length; i += 4) d[i] = ALFA[m[i - 3]];
+      pctx.putImageData(obraz, 0, 0);
+      popredi.hidden = false; posledniSnimek = sn;
+    } catch (e) { maskaOk = false; popredi.hidden = true; }
+  }
+  const fontCss = (k) => (FONTY.find(f => f.k === k) || FONTY[0]);
+  // tmavé barvy (černá, tmavě modrá) dostanou světlou záři, stejně jako ve studiu (titulky.barva_stinu)
+  const zare = (c) => { const h = (c || "").replace("#", ""); if (h.length !== 6) return ""; const n = parseInt(h, 16);
+    return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) < 90 ? ";text-shadow:0 0 1.2cqw rgba(255,255,255,.85),0 .2cqw .5cqw rgba(255,255,255,.6)" : ""; };
+  const px = (v) => (v / W * 100) + "cqw";
+  const top_ = (v) => (v / H * 100) + "%";
+  const barvaTitulku = () => stav.barvaT === "cerna" ? "#111111" : stav.barvaT === "vlastni" && HEX.test(stav.barvaTvl || "") ? stav.barvaTvl : "#FFFFFF";
+  // kusy vět pro titulky „celé věty“: nejvýš 5 slov nebo 30 znaků, nový kus po čárce nebo tečce
+  const KUSY = (() => { const out = []; let cur = null;
+    DATA.slova.forEach((w, i) => {
+      const novy = !cur || cur.v !== w.v || cur.i.length >= 5 || (cur.text + " " + w.w).length > 30;
+      if (novy) { if (cur) out.push(cur); cur = { v: w.v, i: [], text: "", s: w.s, e: w.e }; }
+      cur.i.push(i); cur.text = (cur.text + " " + w.w).trim(); cur.e = Math.max(cur.e, w.e);
+      if (/[,.!?]$/.test(w.w)) { out.push(cur); cur = null; }
+    });
+    if (cur) out.push(cur);
+    out.forEach((k, j) => { const dalsi = out[j + 1]; k.e = dalsi ? dalsi.s : k.e + 0.4; });
+    return out; })();
+  let posledni = "";
+  function kresli() {
+    const t = video.currentTime || 0;
+    const dily = [], pred = [], klic = [];
+    const efOn = $("#p-efekty").checked, titOn = $("#p-titulky").checked;
+    const fn = fontCss(stav.fontN), ft = fontCss(stav.fontT);
+    const barva = stav.barva;
+    let skrytTitulky = false;
+    if (efOn) {
+      for (const n of DATA.nadpisy) {
+        if (t < n.od || t >= n.do) continue;
+        if (n.vyzva ? !stav.efekty.has("vyzva") : (!stav.efekty.has("mini") && !(n === DATA.nadpisy[0] && stav.efekty.has("hook")))) continue;
+        if (n.vyzva) skrytTitulky = true;
+        const radky = n.radky.map((r, i) => {
+          if (n.psani[i]) { const k = Math.floor((t - n.od - 0.35) / PISMENO) + 1; if (k <= 0) return ""; return '<span class="m" style="font-size:' + px(54) + ';color:' + barva + zare(barva) + '">' + esc(r.slice(0, k)) + "</span>"; }
+          const vel = n.vyzva ? (n.velke[i] && i > 0 ? 112 : 70) : 72;
+          return '<span class="v" style="font-family:' + fn.css + ';font-weight:' + fn.w + ';font-style:' + (stav.fontN === "Instrument Serif" ? "italic" : "normal") + ';font-size:' + px(vel * 1.0) + ';color:' + barva + zare(barva) + '">' + esc(r) + "</span>";
+        }).join("");
+        const y = n.vyzva ? 1180 : (stav.polohaN === "stred" ? 820 : n.y + 20);
+        (n.vyzva ? pred : dily).push('<div class="nadpis stin" style="top:' + top_(y) + '">' + radky + "</div>");
+        klic.push("n" + n.od + ":" + Math.floor((t - n.od) / PISMENO));
+      }
+      const z = DATA.zapisnik;
+      if (stav.efekty.has("zapisnik") && t >= z.od && t < z.do) {
+        const r = 66;
+        const pol = z.polozky.map((p, i) => {
+          const ti = z.od + z.casy_rel[i]; if (t < ti) return "";
+          const hotovo = t >= ti + 0.15;
+          return '<div class="pol"><span class="box">' + (hotovo ? "✓" : "") + "</span>" + esc(p) + "</div>";
+        }).join("");
+        dily.push('<div class="zapis" style="--r:' + px(r) + ';left:' + px(z.x) + ';top:' + top_(z.y) + ';width:' + px(z.sirka) + '"><div class="zh">' + esc(z.nadpis) + "</div>" + pol + "</div>");
+        klic.push("z" + z.casy_rel.filter(c => t >= z.od + c).length + (z.casy_rel.filter(c => t >= z.od + c + 0.15).length));
+      }
+      for (const [i, f] of fotky.entries()) {
+        const v = DATA.vety.find(x => x.id === f.veta); if (!v) continue;
+        if (t >= v.s && t < v.s + 2.8) { dily.push('<img class="fotka" alt="" src="' + f.url + '" style="left:' + (8 + (i % 3) * 30) + '%;top:12%;transform:rotate(' + (i % 2 ? 4 : -5) + 'deg)">'); klic.push("f" + i); }
+      }
+    }
+    if (titOn && !skrytTitulky) {
+      const st = DATA.stranky.find(s => t >= s.s && t < s.e);
+      if (st) {
+        let x = 540, y = 1430;
+        if (stav.poloha === "hrud" && st.hrud) [x, y] = st.hrud;
+        else if (stav.poloha === "vedle" && st.vedle) [x, y] = st.vedle;
+        else if (stav.poloha !== "dole" && st.hrud) [x, y] = st.hrud;
+        const cT = barvaTitulku();
+        const ram = tv().ram ? ";background:" + tv().ram + ";padding:1.1cqw 2.4cqw;border-radius:.6cqw;text-shadow:none" : "";
+        const styl = 'color:' + cT + zare(cT) + ram + ';font-family:' + ft.css + ';font-weight:' + (stav.fontT === "Instrument Serif" ? 400 : 500) + ';font-style:' + (stav.fontT === "Instrument Serif" ? "italic" : "normal");
+        const sl = DATA.slova.find(w => Math.abs(w.s - st.s) < 0.01);
+        const klicove = tv().klicova && sl && /[.!]$/.test(sl.w) && sl.w.replace(/[^\p{L}\d]/gu, "").length >= 4;
+        if (stav.titRezim === "slovo" && klicove) {
+          // styl Slovo a kurzíva: důležité slovo větší žlutou patkovou kurzívou (jako studio, titulky.je_klicove)
+          pred.push('<div class="titulek stin" style="color:#F7D254;font-family:\'Instrument Serif\', Georgia, serif;font-style:italic;font-weight:400;left:' + px(x) + ';top:' + top_(y) + ';font-size:' + px(58 * 1.35 * stav.velikost / 100) + '">' + esc(st.w) + "</div>");
+          klic.push("t" + st.s);
+        } else if (stav.titRezim === "slovo") {
+          pred.push('<div class="titulek stin" style="' + styl + ';left:' + px(x) + ';top:' + top_(y) + ';font-size:' + px(58 * stav.velikost / 100) + '">' + esc(st.w) + "</div>");
+          klic.push("t" + st.s);
+        } else {
+          const kus = KUSY.find(k => t >= k.s && t < k.e);
+          if (kus) {
+            if (stav.poloha === "vedle") x = 540;   // celá věta se vedle hlavy nevejde
+            const ted = DATA.slova.findIndex(w => t >= w.s && t < w.e + 0.05);
+            const slova = kus.i.map(i => (stav.titRezim === "veta_zvyr" && i === ted)
+              ? '<span style="color:' + barva + zare(barva) + ';font-weight:800">' + esc(DATA.slova[i].w) + "</span>" : esc(DATA.slova[i].w)).join(" ");
+            pred.push('<div class="titulek veta stin" style="' + styl + ';left:' + px(x) + ';top:' + top_(y) + ';font-size:' + px(46 * stav.velikost / 100) + '">' + slova + "</div>");
+            klic.push("v" + kus.s + ":" + (stav.titRezim === "veta_zvyr" ? ted : ""));
+          }
+        }
+      }
+    }
+    const k = klic.join("|") + JSON.stringify([barva, stav.titVzhled, stav.barvaT, stav.barvaTvl, stav.titRezim, stav.polohaN, stav.fontN, stav.fontT, stav.poloha, stav.velikost, efOn, titOn, fotky.length]);
+    if (k !== posledni) { vrstva.innerHTML = dily.join(""); vrstvaPred.innerHTML = pred.join(""); posledni = k; }
+    video.classList.toggle("cb", stav.cb && !hotovyRezim);
+    popredi.classList.toggle("cb", stav.cb && !hotovyRezim);
+    kresliPopredi(dily.length > 0);
+    // přepis a osa
+    const akt = DATA.slova.findIndex(w => t >= w.s && t < w.e + 0.05);
+    document.querySelectorAll("#prepis span.akt").forEach(s => s.classList.remove("akt"));
+    if (akt >= 0) { const s = document.querySelector('#prepis span[data-i="' + akt + '"]'); if (s) s.classList.add("akt"); }
+    document.querySelectorAll("#osa tr").forEach(tr => tr.classList.toggle("ted", Math.abs(+tr.dataset.t - t) < 0.35));
+    $("#cas").textContent = Math.floor(t / 60) + ":" + (t % 60).toFixed(1).padStart(4, "0").replace(".", ",");
+    if (!tahnu) $("#posun").value = Math.round(t / (video.duration || DATA.delka) * 1000);
+  }
+  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  /* ---------- přehrávání ---------- */
+  let hotovyRezim = false, tahnu = false, minulyCas = 0;
+  function smycka() {
+    const t = video.currentTime;
+    if (!video.paused && !hotovyRezim && $("#p-zvuky").checked && t > minulyCas && t - minulyCas < 0.5) {
+      for (const b of BODY) if (b.t > minulyCas && b.t <= t) zahraj(b.typ, b.typ === "klavesa" ? 0.8 : 1);
+    }
+    minulyCas = t;
+    if (!hotovyRezim) kresli(); else { $("#cas").textContent = Math.floor(t / 60) + ":" + (t % 60).toFixed(1).padStart(4, "0").replace(".", ","); if (!tahnu) $("#posun").value = Math.round(t / (video.duration || 1) * 1000); }
+    if (!video.paused) requestAnimationFrame(smycka);
+  }
+  // na telefonu je náhled nad kartami: po Zpět se stránka vrátí ke kartě, ze které ukázka byla
+  $("#zavrit-ukazku").onclick = () => { const k = ukazuji && document.querySelector('.efekt[data-k="' + ukazuji + '"]'); zavriUkazku();
+    if (k) { const r = k.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) window.scrollTo(0, Math.max(0, scrollY + r.top - innerHeight / 3)); } };
+  $("#hrat").onclick = () => { zavriUkazku(); audio(); if (video.paused) { video.play().catch(() => toast("Video se nepodařilo pustit, zkus to znovu.")); } else video.pause(); };
+  video.addEventListener("play", () => { $("#hrat").textContent = "❚❚ Pauza"; minulyCas = video.currentTime; requestAnimationFrame(smycka); });
+  video.addEventListener("pause", () => { $("#hrat").textContent = "▶ Přehrát"; });
+  video.addEventListener("loadedmetadata", () => kresli());
+  video.addEventListener("loadeddata", () => { posledniSnimek = -1; if (!hotovyRezim) kresli(); });
+  video.addEventListener("seeked", () => { minulyCas = video.currentTime; if (!hotovyRezim) kresli(); });
+  $("#posun").addEventListener("input", (ev) => { tahnu = true; video.currentTime = (+ev.target.value / 1000) * (video.duration || DATA.delka); });
+  $("#posun").addEventListener("change", () => { tahnu = false; });
+  ["#p-titulky", "#p-efekty"].forEach(s => $(s).addEventListener("change", () => kresli()));
+  $("#hotovy").onclick = () => { zavriUkazku();
+    hotovyRezim = !hotovyRezim; const t = video.currentTime; const hral = !video.paused;
+    video.src = hotovyRezim ? "video/reel-hotovy.mp4" : "video/reel-zaklad-maska.mp4";
+    video.classList.toggle("dvoj", !hotovyRezim); popredi.hidden = true; posledniSnimek = -1;
+    video.addEventListener("loadedmetadata", function f() { video.removeEventListener("loadedmetadata", f); video.currentTime = Math.min(t, video.duration || t); if (hral) video.play().catch(() => {}); });
+    vrstva.hidden = hotovyRezim; vrstvaPred.hidden = hotovyRezim; $("#znacka").textContent = hotovyRezim ? "Hotový reel ze studia" : "Náhled tvé volby";
+    $("#hotovy").textContent = hotovyRezim ? "Zpět na náhled tvé volby" : "Pustit hotový reel (verze 4)";
+    video.classList.toggle("cb", stav.cb && !hotovyRezim);
+  };
+
+  /* ---------- kód stylu ---------- */
+  function kodStylu(s) {
+    const ef = [...s.efekty].filter(k => !VZDY.includes(k)).map(k => NAZEV_EF[k] || k);
+    const zv = [...s.zvuky].map(k => (ZVUKY.find(z => z.k === k) || {}).n || k);
+    const poloha = (POLOHY.find(p => p.k === s.poloha) || {}).n || s.poloha;
+    const bT = s.barvaT === "cerna" ? "černé" : s.barvaT === "vlastni" ? (s.barvaTvl || "#FFFFFF").toUpperCase() : "bílé";
+    const rez = { slovo: "po jednom slově", veta: "celé věty", veta_zvyr: "celé věty, zvýrazněné slovo" }[s.titRezim || "slovo"];
+    return "styl: " + (s.titVzhled && s.titVzhled !== "vlastni" ? s.titVzhled : "vlastní") + "; nadpisy: " + s.fontN + ", " + s.barva.toUpperCase() + ", " + (s.polohaN === "stred" ? "uprostřed" : "nahoře") + (s.cb ? "; obraz: černobílý" : "") +
+      "; titulky: " + s.fontT + ", " + bT + ", " + poloha.toLowerCase() + ", " + rez + ", " + s.velikost + " %" +
+      "; prvky: " + (ef.length ? ef.join(", ") : "jen základ") + "; zvuky: " + (zv.length ? zv.join(", ") + " (" + s.hlasitost + " %)" : "bez zvuků") +
+      "";
+  }
+  $("#kopirovat").onclick = () => {
+    const t = $("#kod").textContent;
+    const vyber = () => { const r = document.createRange(); r.selectNodeContents($("#kod")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Označeno, zkopíruj klávesou."); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(() => toast("Zkopírováno."), vyber); else vyber();
+  };
+
+  /* ---------- pamatování ---------- */
+  let db = null, uid = null, assets = null, ulozene = [], casovac = null;
+  const prosty = (s) => ({ titVzhled: s.titVzhled || "vlastni", barva: s.barva, barvaT: s.barvaT || "bila", barvaTvl: s.barvaTvl || "#FFFFFF", polohaN: s.polohaN || "nahore", titRezim: s.titRezim || "slovo", cb: s.cb, fontN: s.fontN, fontT: s.fontT, poloha: s.poloha, velikost: s.velikost, hlasitost: s.hlasitost, efekty: [...s.efekty], zvuky: [...s.zvuky] });
+  function zapamatuj() {
+    clearTimeout(casovac);
+    casovac = setTimeout(async () => {
+      const v = prosty(stav);
+      try { localStorage.setItem("vyber-stylu-2", JSON.stringify(v)); } catch (e) {}
+      if (db && uid) { try { await db.doc("data/users/" + uid + "/vyber").set(v); } catch (e) {} }
+    }, 800);
+  }
+  /* Marcela 10. 11. 2026: výběr pro reel bez kopírování. Záznam data/users/<id>/pro-reel si Claude zákaznice
+     přečte sám (kód stylu + čas uložení), stačí mu napsat „uloženo“. */
+  $("#pro-reel").onclick = async () => {
+    const v = prosty(stav);
+    v.kod = kodStylu(stav); v.ulozeno = new Date().toISOString();
+    try { localStorage.setItem("vyber-stylu-2", JSON.stringify(prosty(stav))); } catch (e) {}
+    if (db && uid) {
+      try {
+        await db.doc("data/users/" + uid + "/pro-reel").set(v);
+        const cas = new Date().toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+        $("#pro-reel-pozn").textContent = "Uloženo v " + cas + ". Claude pokračuje sám, můžeš se vrátit do chatu.";
+        toast("Uloženo. Claude pokračuje sám.");
+        return;
+      } catch (e) {}
+    }
+    $("#kod-detail").open = true;
+    $("#pro-reel-pozn").textContent = "Uložit se nepodařilo. Pošli Claudovi kód stylu, který se ukázal níž.";
+    toast("Uložit se nepodařilo, kód stylu je níž.");
+  };
+  function nacti(v) {
+    if (!v) return;
+    // starší uložené styly (verze 19 a dřív) měly hotový styl: Zelený a Švestkový editor a Slovo a kurzíva se převedou na vzhled titulků
+    const pr = v.preset || v.celkovy;
+    Object.assign(stav, structuredClone(VYCHOZI), v);
+    delete stav.preset; delete stav.celkovy; delete stav.klicova;
+    if (!TIT_VZHLEDY.some(x => x.k === stav.titVzhled)) stav.titVzhled = TIT_VZHLEDY.some(x => x.k === pr) ? pr : "vlastni";
+    stav.efekty = new Set([...(v.efekty || []), ...VZDY]); stav.zvuky = new Set(v.zvuky || []);
+    if (stav.barvaT === "nadpis") { stav.barvaT = "vlastni"; stav.barvaTvl = stav.barva; }   // starší volba „jako nadpisy“
+  }
+  function zmena(bezVoleb, presetZustava) {
+    if (!bezVoleb) vykresliVolby();
+    UD = udalosti(); BODY = zvukoveBody(UD); vykresliPrepis();
+    $("#kod").textContent = kodStylu(stav);
+    posledni = ""; kresli(); zapamatuj();
+  }
+  function vykresliMoje() {
+    const box = $("#moje"); box.innerHTML = "";
+    if (!ulozene.length) { box.innerHTML = '<span class="pozn">Zatím nic. Vyber barvu, písmo a efekty a klikni na Uložit můj styl.</span>'; return; }
+    ulozene.forEach((s, i) => {
+      const k = document.createElement("div"); k.className = "moje-k";
+      const b = document.createElement("b"); b.textContent = s.nazev;
+      const r = document.createElement("span"); r.className = "pozn"; r.textContent = s.fontN ? (s.fontN + " · " + (s.barva || "") + " · " + ((s.efekty || []).filter(k => !VZDY.includes(k)).length) + " efektů") : "starší styl";
+      const a = document.createElement("div"); a.className = "radek";
+      const pouzit = document.createElement("button"); pouzit.className = "tl"; pouzit.type = "button"; pouzit.textContent = "Použít";
+      pouzit.onclick = () => { nacti(s); vykresliEfekty(); zmena(false, true); toast("Styl „" + s.nazev + "“ je vybraný."); };
+      const smaz = document.createElement("button"); smaz.className = "tl tiche"; smaz.type = "button"; smaz.textContent = "Smazat";
+      smaz.onclick = async () => { ulozene.splice(i, 1); await zapisMoje(); vykresliMoje(); toast("Smazáno."); };
+      a.append(pouzit, smaz); k.append(b, r, a); box.appendChild(k);
+    });
+  }
+  async function zapisMoje() {
+    try { localStorage.setItem("moje-styly", JSON.stringify(ulozene)); } catch (e) {}
+    if (db && uid) { try { await db.doc("data/users/" + uid + "/styly").set({ seznam: ulozene }); } catch (e) { toast("Uložení se nepovedlo, zkus to znovu."); } }
+  }
+  $("#ulozit").onclick = async () => {
+    const nazev = ($("#nazev").value || "").trim() || ("Můj styl " + (ulozene.length + 1));
+    ulozene.unshift(Object.assign({ nazev, kdy: new Date().toISOString().slice(0, 10) }, prosty(stav)));
+    await zapisMoje(); vykresliMoje(); $("#nazev").value = ""; toast("Uloženo do Mých stylů.");
+  };
+  $("#vychozi").onclick = async () => {
+    if (!db) return;
+    try { await db.doc("nastaveni/vychozi").set(Object.assign({ kdy: new Date().toISOString(), kod: kodStylu(stav) }, prosty(stav))); toast("Nastaveno jako výchozí pro studio."); }
+    catch (e) { toast("Výchozí styl se nepodařilo uložit."); }
+  };
+
+  /* ---------- fotky ---------- */
+  function vykresliFotky() {
+    const box = $("#fotky"); box.querySelectorAll(".fot").forEach(x => x.remove());
+    const nahraj = box.querySelector(".nahraj");
+    fotky.forEach((f, i) => {
+      const k = document.createElement("div"); k.className = "fot";
+      const img = document.createElement("img"); img.src = f.url; img.alt = "Tvůj obrázek " + (i + 1);
+      const d = document.createElement("div");
+      const sel = document.createElement("select"); sel.id = "fotka-veta-" + i; sel.setAttribute("aria-label", "Ke které větě");
+      sel.innerHTML = '<option value="">Ke které větě?</option>';
+      for (const v of DATA.vety) { const o = document.createElement("option"); o.value = v.id; o.textContent = v.s.toFixed(1).replace(".", ",") + " s · " + v.text.slice(0, 48) + (v.text.length > 48 ? "…" : ""); if (f.veta === v.id) o.selected = true; sel.appendChild(o); }
+      sel.onchange = () => { f.veta = sel.value || null; ulozFotky(); zmena(true); if (f.veta) { const v = DATA.vety.find(x => x.id === f.veta); video.currentTime = v.s; kresli(); } };
+      const smaz = document.createElement("button"); smaz.className = "tl tiche"; smaz.type = "button"; smaz.textContent = "Odebrat";
+      smaz.onclick = async () => { fotky.splice(i, 1); if (f.id && assets) { try { await assets.delete(f.id); } catch (e) {} } ulozFotky(); vykresliFotky(); zmena(true); };
+      d.append(sel, smaz); k.append(img, d); box.insertBefore(k, nahraj);
+    });
+  }
+  async function ulozFotky() {
+    if (db && uid) { try { await db.doc("data/users/" + uid + "/fotky").set({ seznam: fotky.filter(f => f.id).map(f => ({ id: f.id, url: f.url, veta: f.veta || null })) }); } catch (e) {} }
+  }
+  $("#soubory").addEventListener("change", async (ev) => {
+    const soubory = [...ev.target.files]; ev.target.value = "";
+    for (const s of soubory) {
+      if (!/^image\/(png|jpeg|webp)$/.test(s.type)) { toast("„" + s.name + "“ není PNG, JPG ani WEBP."); continue; }
+      if (assets) {
+        try { const a = await assets.upload(s); fotky.push({ id: a.id, url: a.url, veta: null }); }
+        catch (e) { toast("Obrázek „" + s.name + "“ se nepodařilo nahrát."); continue; }
+      } else fotky.push({ url: URL.createObjectURL(s), veta: null });
+    }
+    vykresliFotky(); ulozFotky(); zmena(true);
+    if (soubory.length) toast(assets ? "Nahráno. Vyber, ke které větě patří." : "Obrázky vidíš jen v tomhle prohlížeči. Vyber, ke které větě patří.");
+  });
+
+  /* ---------- start ---------- */
+  try { const u = JSON.parse(localStorage.getItem("vyber-stylu-2") || "null"); if (u) nacti(u); } catch (e) {}
+  try { ulozene = JSON.parse(localStorage.getItem("moje-styly") || "[]"); } catch (e) { ulozene = []; }
+  vykresliVolby(); vykresliEfekty(); vykresliMoje(); zmena(true, true); vykresliFotky();
+  (async () => {
+    if (!window.claude || !window.claude.use) return;
+    const [d, u, a] = await Promise.all([claude.use("db"), claude.use("user"), claude.use("assets")]);
+    assets = a;
+    if (!assets) $("#fotky-pozn").textContent = "Nahraj obrázky, které chceš v reelu, a u každého vyber větu. Tady je uvidíš jen v tomhle prohlížeči; do studia je pak dej do složky reelu.";
+    if (!d) return; db = d;
+    if (u) { try { uid = await u.id(); if (await u.isOwner()) $("#vychozi").hidden = false; } catch (e) {} }
+    if (!uid) return;
+    try { const s = await db.doc("data/users/" + uid + "/styly").get(); if (s.exists) { ulozene = s.data().seznam || []; vykresliMoje(); } } catch (e) {}
+    try { const v = await db.doc("data/users/" + uid + "/vyber").get(); if (v.exists) { nacti(v.data()); vykresliEfekty(); zmena(false, true); } } catch (e) {}
+    if (false) try { const f = await db.doc("data/users/" + uid + "/fotky").get(); if (f.exists) { fotky = (f.data().seznam || []).map(x => ({ id: x.id, url: x.url || ("/_blob/" + x.id), veta: x.veta })); vykresliFotky(); zmena(true); } } catch (e) {}
+  })();
+})();
+</script>
+
+</body></html>
