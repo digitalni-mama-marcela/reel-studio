@@ -9,11 +9,11 @@
       "name": "reel-studio",
       "source": {
         "source": "archive",
-        "url": "https://github.com/digitalni-mama-marcela/reel-studio/releases/download/v0.4.202611201125/reel-studio-0.4.202611201125.zip",
-        "sha256": "09c2190900944a5f2020012cc6d73a28aae385f11f40fcc2dbefebde1048ef7e"
+        "url": "https://github.com/digitalni-mama-marcela/reel-studio/releases/download/v0.4.202611231139/reel-studio-0.4.202611231139.zip",
+        "sha256": "04e4391a035451ed861613673e4a774314b58e523e3edffd05ad10c227b1c83e"
       },
       "description": "Z natočeného mluvícího videa udělá sestříhaný reel (střih, titulky, hook), česky, všechno na tvém počítači.",
-      "version": "0.4.202611201125"
+      "version": "0.4.202611231139"
     }
   ]
 }

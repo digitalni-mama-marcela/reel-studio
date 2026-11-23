@@ -9,7 +9,7 @@ Plugin je součástí kurzu. Postup instalace a natáčení najdeš v lekcích.
 ## Instalace
 V aplikaci Claude otevři záložku Code, vyber složku Reely a napiš:
 
-**nainstaluj studio z github.com/digitalni-mama-marcela/reel-studio**
+**nainstaluj studio z github.com/digitalni-mama-marcela/reel-studio – git nepoužívej, nejdřív si přečti README**
 
 Claude zbytek udělá sám a na všechno se tě zeptá. Funguje na Macu (macOS 14 a novější s čipem M) i na Windows 10
 a 11. Nic neinstaluješ sama a nikdo po tobě nechce heslo: studio si stáhne samo všechno, co potřebuje, i bez
@@ -20,6 +20,9 @@ Zákaznice tě požádala o instalaci tohoto pluginu. Mluv s ní česky, tykej, 
 Před každým příkazem jí jednou větou řekni, co děláš. Nic nemaž a nic neměň mimo kroky níž.
 Repozitář do její složky nestahuj (žádné git clone) a git neinstaluj, není potřeba: plugin se stahuje jako jeden
 ZIP soubor podle katalogu na adrese níž (OVĚŘENO 20. 11. 2026 na Macu bez gitu: přidání, instalace i aktualizace).
+Git nespouštěj vůbec, ani `git --version`: na Macu bez vývojářských nástrojů tím vyskočí okno s nabídkou jejich
+instalace (OVĚŘENO 23. 11. 2026 na MacBooku Neo). Kdyby se to už stalo, řekni jí: „Okno s vývojářskými nástroji
+zavři tlačítkem Zrušit, nepotřebujeme je.“
 
 1. Najdi program Claude Code (v aplikaci Claude bývá schovaný, příkaz `/plugin` v chatu aplikace nefunguje):
    - nejdřív `command -v claude` (Windows: `where.exe claude`);

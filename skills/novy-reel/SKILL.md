@@ -85,14 +85,26 @@ not finish, trying again (attempt 2 of 3)`, česky „⏳ Stahování se nedokon
 5. **Návrh střihu:** `start.py navrh --reel "<složka>"`. Krok vypíše zdvojené věty a návrh. Přečti zákaznici
    jen to, co se navrhuje vyhodit, jednou větou, a zeptej se: „Souhlasíš, nebo něco vrátit?“
 6. **Náhled:** `start.py nahled --reel "<složka>"` (asi minuta na minutu reelu). Náhled má jednoduché bílé titulky,
-   ať zákaznice vidí text a může napsat opravu („typy oprav na tipy“). Nadpis, efekty a zvuky v něm ještě nejsou.
-   Přečti výslednou řádku. Když je červená, řekni zákaznici větu za „Udělej:“ a nic nevymýšlej. Pošli jí MP4
-   a zeptej se: „Sedí střih a text? Napiš, co opravit, nebo jo.“
-7. **Editor přepisu** se po náhledu otevře sám, když to má zákaznice v nastavení (`editor_po_nahledu`): maže věty
-   a slova, opravuje titulky a píše poznámky pro tebe. Krok skončí, až klikne na „Odeslat úpravy“. Přečti si
-   shrnutí (včetně poznámek, to jsou její pokyny) a udělej nový náhled: `start.py nahled --reel "<složka>"`.
-   Když řekne, že je to ono, pokračuj. Změny slovy (smaž větu 5, vystřihni „za mě“) jdou i bez editoru:
-   `nahled --vyber` a `--vynechat` podle čísel vět. Editor zvlášť: `start.py editor --reel "<složka>"`.
+   ať zákaznice vidí text. Nadpis, efekty a zvuky v něm ještě nejsou. Přečti výslednou řádku. Když je červená,
+   řekni zákaznici větu za „Udělej:“ a nic nevymýšlej. Krok na editor nečeká, ten otevřeš hned v kroku 7.
+7. **Editor přepisu: otevři ho VŽDY po každém náhledu, sama a bez ptaní** (Marcela 23. 11. 2026: zákaznice ho
+   musí uvidět pokaždé, sama by o něj neřekla, protože neví, že existuje). Vypneš ho jen, když má v nastavení
+   `editor_po_nahledu: false` (pak to náhled sám řekne). Editor ukazuje náhled s titulky a věty pod ním: maže věty
+   a slova, opravuje titulky a píše poznámky pro tebe.
+   a) Spusť NA POZADÍ (nástroj pro příkazy s během na pozadí): `start.py editor --reel "<složka>" --neotvirat`.
+      Do pár sekund vypíše `STATUS editor READY http://127.0.0.1:<port>/`. Přečti si adresu z výstupu.
+   b) Otevři adresu vedle chatu, když máš vestavěný prohlížeč aplikace (nástroj Claude_Browser, `preview_start`
+      s `url`). Když ho nemáš, zastav ten příkaz a spusť editor na pozadí znovu bez `--neotvirat` (otevře výchozí
+      prohlížeč); řekni jí, že se okno otevře zvlášť, a kdyby ho neviděla, ať se podívá do prohlížeče.
+   c) Řekni jí: „Otevřela jsem ti náhled s titulky. Přehraj si ho. Když chceš něco vyhodit nebo opravit, klikni
+      na větu nebo slovo, nebo mi tam napiš poznámku. Až budeš hotová, klikni dole na Odeslat úpravy. Když je
+      všechno dobře, klikni na Odeslat úpravy rovnou.“
+   d) Čekej, až příkaz na pozadí skončí (dostaneš upozornění). Přečti shrnutí (včetně poznámek, to jsou její
+      pokyny). Když něco změnila, udělej nový náhled (`start.py nahled --reel "<složka>"`) a editor otevři znovu
+      (krok 7 od začátku). Když nic nezměnila, pokračuj krokem 7b.
+   e) Když skončí „nic se neuložilo“, zeptej se, jestli ho chce otevřít znovu, nebo jestli je náhled v pořádku.
+   Změny slovy (smaž větu 5, vystřihni „za mě“) jdou i bez editoru: `nahled --vyber` a `--vynechat` podle čísel
+   vět; po takovém náhledu editor otevři taky.
 7b. **Výběr vzhledu (knihovna stylů).** Když je střih a text hotový, spusť knihovnu NA POZADÍ (běží, dokud
    zákaznice neuloží) a postupuj podle oddílu Výběr z knihovny stylů níž. Když vzhled vybírat nechce, použij její
    poslední styl (`start.py styl --reel "<složka>"`).

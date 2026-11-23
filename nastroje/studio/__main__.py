@@ -379,16 +379,22 @@ def krok_nahled(a):
         zprava += " " + " ".join(hlaseni) + " Když to nechceš, vrať slova v editoru."
     if nejiste:
         zprava += " Střihy uvnitř věty bez pauzy (zkontroluj poslechem): %s." % ", ".join("%s v %s" % (x["veta"], cas_text(x["cas"])) for x in nejiste)
+    # Editor přepisu (náhled s titulky a větami) má zákaznici vyskočit po KAŽDÉM náhledu (Marcela 23. 11. 2026,
+    # „must have“). Krok náhledu už na editor nečeká: příkaz by běžel až 30 minut a Claudovi by vypršel čas.
+    # Claude editor spustí hned potom na pozadí a otevře ho vedle chatu (stejně jako knihovnu stylů).
+    otevrit_editor = a.editor or (nast.get("editor_po_nahledu", True) and not a.bez_editoru)
+    pokyn_editor = ("HNED, bez ptaní, otevři zákaznici editor přepisu: spusť NA POZADÍ STUDIO editor --reel \"%s\" --neotvirat, "
+                    "adresu z řádku STATUS editor READY otevři vedle chatu (vestavěný prohlížeč; když ho nemáš, spusť editor "
+                    "bez --neotvirat) a počkej, až klikne na Odeslat úpravy." % r)
     if cervene:
-        k.cervena(zprava, "poslechni si místa z kontroly; když je to špatně, uprav výběr v editoru a udělej náhled znovu.")
+        k.cervena(zprava, "poslechni si místa z kontroly; když je to špatně, uprav výběr v editoru a udělej náhled znovu."
+                  + (" " + pokyn_editor if otevrit_editor else ""))
     else:
-        k.zelena(zprava, "podívej se na náhled. Řekni 'jo', nebo otevři editor (STUDIO editor --reel \"%s\")." % r,
-                 {"nahled": str(mp4), "delka_s": osa["delka"]})
+        k.zelena(zprava, pokyn_editor if otevrit_editor else
+                 "podívej se na náhled. Řekni 'jo', nebo otevři editor (STUDIO editor --reel \"%s\")." % r,
+                 {"nahled": str(mp4), "delka_s": osa["delka"], "otevrit_editor": bool(otevrit_editor)})
     reel.pripis_do_seznamu(s["reely"], r.name, projekt.nazev_reelu(r), "náhled %d" % n)
     _prubeh(r)
-    if a.editor or (nast.get("editor_po_nahledu") and not a.bez_editoru):
-        a.neotvirat, a.cekat, a.port = False, 1800, 0
-        return krok_editor(a)
     return k.kod()
 
 
@@ -1445,12 +1451,13 @@ def krok_editor(a):
     (s["pracovni"] / "editor.html").write_text(editor.stranka(data, "../VYSTUP/%s" % video.name if video else ""), encoding="utf-8")
 
     def ohlas(adresa):
-        k.info("Editor běží na %s (jen na tomhle počítači). Otevírám prohlížeč. Až uložíš, zavři okno." % adresa)
+        print("STATUS editor READY %s" % adresa, flush=True)
+        k.info("Editor běží na %s (jen na tomhle počítači). Až zákaznice klikne na Odeslat úpravy, příkaz skončí sám." % adresa)
 
     u = editor.spust(html, video, s["pracovni"] / "upravy.json", otevrit=not a.neotvirat, cekat_s=a.cekat, port=a.port, po_startu=ohlas)
     if u is None:
         k.cervena("nic se neuložilo (okno zavřené bez uložení, nebo vypršel čas %d s)." % a.cekat,
-                  "spusť editor znovu a klikni na Uložit úpravy. Nebo řekni, co změnit, slovy.")
+                  "spusť editor znovu a klikni na Odeslat úpravy. Nebo řekni, co změnit, slovy.")
     else:
         k.zelena("úpravy uložené: %s" % editor.shrnuti_uprav(u), "nový náhled (STUDIO nahled --reel \"%s\")." % r,
                  {"upravy": {kk: v for kk, v in u.items() if kk != "texty"}})
@@ -1548,7 +1555,7 @@ def main(argv=None):
     nh.add_argument("--kontrola-slov", action="store_true", help="přečíst hotový zvuk přepisovačem a porovnat (pomalejší)")
     nh.add_argument("--model", default="turbo")
     nh.add_argument("--preset", default="fast", help="rychlost kódování ffmpeg (fast pro náhled, medium pro finál)")
-    nh.add_argument("--editor", action="store_true", help="hned po náhledu otevřít editor přepisu")
+    nh.add_argument("--editor", action="store_true", help="po náhledu připomenout otevření editoru, i když ho má nastavení vypnutý")
     nh.add_argument("--bez-editoru", action="store_true", help="neotvírat editor, i když to má nastavení zapnuté")
     nh.add_argument("--vystrihnout", help="úseky k vystřižení podle času originálu: k1:10.92-11.13;k3:21.8-22.1 (přeřek, „mmm“); \"\" = žádné")
     nh.add_argument("--cele", action="store_true", help="bez střihu: celé video tak, jak je natočené (žádné pauzy ani věty pryč)")
