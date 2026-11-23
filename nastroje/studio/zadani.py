@@ -497,6 +497,8 @@ def pridej_do_planu(reel, radky, styl_reelu, vety):
         if karta in NADPISY and karta != nadpis:
             hlasky.append("⚠️ Vybrané jsou dva nadpisy, použiju %s; %s vynechávám." % (KARTY[nadpis]["typ"], karta))
             continue
+        if any(r["prvek"] == karta for r in radky):
+            continue                    # už v plánu je (třeba ručně přesunutý k jiné větě)
         i = misto(karta, vety, radky, data, profil)
         if i is None:
             hlasky.append("⚠️ %s: nenašla jsem větu, kam patří. Zeptej se zákaznice, u které věty to chce." % karta)

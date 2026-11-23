@@ -538,6 +538,12 @@ def krok_vzhled(a):
         dostupne = set(_prvky.nacti_vsechny())
         osa["mini"] = []
         from . import zadani as _zadani
+        # plán mohl vzniknout před výběrem stylu: efekty ze stylu, které v něm chybí, se doplní (nic se nepřepisuje)
+        vety_planu = [{"id": vid_, "text": vety_text.get(vid_, ""), "od": veta_slova[vid_][0]["start"], "do": veta_slova[vid_][-1]["end"]}
+                      for vid_ in dict.fromkeys(v_ for u in osa["useky"] for v_ in u.get("vety", [])) if vid_ in veta_slova]
+        if not any(rr["prvek"] in _zadani.NADPISY for rr in plan["radky"]):
+            for zprava in _zadani.pridej_do_planu(r, plan["radky"], styl_reelu, vety_planu):
+                k.info("Plán byl starší než styl, doplňuji: " + zprava)
         prvni_veta = next((rr["veta"] for rr in plan["radky"] if rr["veta"] in veta_slova), None)
         hook_radky = [rr for rr in plan["radky"] if rr["veta"] == prvni_veta and (rr["prvek"] in ("hook", "karty_slov") or rr["prvek"] in _zadani.NADPISY)]
         if a.bez_hooku:
