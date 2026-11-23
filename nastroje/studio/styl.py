@@ -482,7 +482,9 @@ def pouzij_na_plan(radky, s, vety, obrazky=None):
         return hlasky
     povolene = s.get("prvky")
     if isinstance(povolene, list):
-        p = set(povolene) | PRVKY_VZDY
+        # nadpis je základ jako titulky (Marcela 23. 11. 2026: potvrzený nadpis nesmí z videa zmizet jen proto,
+        # že ve stylu není karta hooku; nadpisy z knihovny, třeba skládaný, ho nahradí v kroku plan)
+        p = set(povolene) | PRVKY_VZDY | {"hook"}
         for r in radky:
             if r["prvek"] in p:
                 continue

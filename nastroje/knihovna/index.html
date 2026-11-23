@@ -124,8 +124,9 @@ body { background: var(--bg); color: var(--fg); font-family: var(--body); font-s
   background: rgba(58,40,54,.82); color: #FBF6EF; }
 .efekt .ukaz:hover { background: var(--tmava); }
 .efekt.ted { outline: 3px solid var(--akcent); outline-offset: 1px; }
-.efekt .dodas { margin-top: 4px; padding-top: 6px; border-top: 1px dashed var(--linka); color: var(--fg); }
-.efekt .dodas b { font: 700 11.5px/1.45 var(--body); }
+.efekt .dodas { display: block; margin-top: 6px; padding: 6px 8px; border-radius: 8px; background: var(--akcent-2); color: var(--zvyr); font-weight: 600; }
+.efekt .dodas b { font: 800 11.5px/1.45 var(--body); text-transform: uppercase; letter-spacing: .03em; }
+.napoveda { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--fg); opacity: .85; }
 .efekt .nahl { position: relative; }
 .efekt .zaber { position: absolute; left: 8px; bottom: 8px; font: 700 10.5px/1.2 var(--body); background: var(--akcent-2); color: var(--tmava);
   border-radius: 99px; padding: 5px 9px; max-width: calc(100% - 16px); }
@@ -293,6 +294,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--body); font-s
       <section class="panel cely" id="ulozit-panel">
         <h2><span class="krok">6</span>Ulož výběr pro svůj reel</h2>
         <div class="radek"><button class="tl hlavni velke" id="pro-reel" type="button">Uložit výběr pro tenhle reel</button></div>
+        <p class="napoveda">Po uložení se tě Claude najednou zeptá na všechno, co k vybraným efektům potřebuje (u každého efektu je to v rámečku „Co dodáš“).</p>
         <p class="pozn" id="pro-reel-pozn">Claude si výběr převezme sám a podle něj dodělá tvůj reel. Nic nekopíruješ ani nepíšeš.</p>
         <div class="stitek">Pojmenuj si styl na příště (nemusíš)</div>
         <div class="radek">

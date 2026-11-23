@@ -25,6 +25,10 @@ from pathlib import Path
 from . import duplikaty, hlaseni, hlidana_slova, kopie, kontrola_videa, opravy, otisk, projekt, reel, strih
 from .hlaseni import Krok, cas_text
 
+# prvky, které smí běžet souběžně s dalšími (pozadí za osobou, karty IG nahoře a dole): nezkracují se kvůli dalšímu textu
+PRVKY_BEZ_ZKRACENI = {"vypinac_plakat", "pred_po", "obalka_casopisu", "ig_sledovat", "ig_komentar"}
+PRVKY_POZADI = {"vypinac_plakat", "pred_po", "obalka_casopisu"}      # ani nezkracují ostatní (běží za osobou)
+
 
 def _prubeh(r):
     """Po každém kroku obnoví přehled průběhu (VYSTUP/prubeh.html). Chyba přehledu nikdy neshodí krok."""
@@ -533,8 +537,29 @@ def krok_vzhled(a):
         from . import prvky as _prvky
         dostupne = set(_prvky.nacti_vsechny())
         osa["mini"] = []
+        from . import zadani as _zadani
+        prvni_veta = next((rr["veta"] for rr in plan["radky"] if rr["veta"] in veta_slova), None)
+        hook_radky = [rr for rr in plan["radky"] if rr["veta"] == prvni_veta and (rr["prvek"] in ("hook", "karty_slov") or rr["prvek"] in _zadani.NADPISY)]
+        if a.bez_hooku:
+            # zákaznice nadpis nechce: řádek nadpisu u první věty se vynechá
+            plan["radky"] = [rr for rr in plan["radky"] if rr not in hook_radky]
+            hook_radky = []
+        elif a.hook:
+            # text nadpisu potvrzený zákaznicí (krok 7c) má přednost před návrhem plánu
+            for rr in hook_radky:
+                rr["obsah"] = " | ".join(a.hook.split()) if rr["prvek"] == "karty_slov" else a.hook
+            if not hook_radky and prvni_veta:
+                hr = {"veta": prvni_veta, "prvek": "hook", "obsah": a.hook, "duvod": "nadpis zákaznice"}
+                plan["radky"].insert(0, hr)
+                hook_radky = [hr]
         if not any(r["prvek"] in ("hook", "karty_slov") for r in plan["radky"]):
             osa["hook"] = None            # plán je závazný: bez řádku hook žádná karta hooku
+        hook_efektu = a.hook or next((rr.get("obsah", "").replace(" | ", " ") for rr in hook_radky if rr.get("obsah")), None)
+        kontext_efektu = {"vety": [{"id": vid_, "text": vety_text.get(vid_, ""), "od": veta_slova[vid_][0]["start"], "do": veta_slova[vid_][-1]["end"]}
+                                   for vid_ in dict.fromkeys(v_ for u in osa["useky"] for v_ in u.get("vety", [])) if vid_ in veta_slova],
+                          "delka_reelu": osa["delka"], "delka_videa": sum(float(kl.get("delka") or 0) for kl in klipy),
+                          "klipy": klipy, "hook_text": hook_efektu, "styl_vzhledu": titulky.STYLY[styl], "radky": plan["radky"]}
+        nesestavene = []
         k.info("Stavím podle plánu střihu (%d řádků)." % len(plan["radky"]))
         for rad in plan["radky"]:
             if rad.get("zkontrolovat"):
@@ -558,6 +583,15 @@ def krok_vzhled(a):
             if rad.get("trvani"):
                 do_v = od_v + float(rad["trvani"]) - 0.3
             n_mini0, n_prv0 = len(osa["mini"]), len(osa["prvky"])
+            if prvek in _zadani.KARTY:
+                # efekt z knihovny stylů (Marcela 23. 11. 2026): podklady od zákaznice, sestavení v zadani.py
+                kontext_efektu["slova_vety"] = veta_slova[vid]
+                spec_e, duvod_e = _zadani.sestav_spec(r, prvek, rad, od_v, do_v, kontext_efektu)
+                if spec_e is None:
+                    nesestavene.append("%s u věty %s: %s" % (_styl.PRVKY_TEXT.get(prvek, prvek), vid, duvod_e))
+                else:
+                    osa["prvky"].extend(spec_e if isinstance(spec_e, list) else [spec_e])
+                continue
             if prvek == "karty_slov" and "karty_slov" in dostupne:
                 karty = [c.strip() for c in obsah.split("|") if c.strip()]
                 osa["hook"] = None
@@ -794,9 +828,10 @@ def krok_vzhled(a):
                     if rad.get("zvuk_skoku"):
                         osa.setdefault("zvuky", []).append({"typ": rad["zvuk_skoku"], "cas": round(w["start"], 2), "db": -14})
         # prvek u první věty (vedle hooku) začne až 0,2 s po konci hooku nebo karet slov
-        hook_do = max([x["do"] for x in osa["prvky"] if x["typ"] == "karty_slov"] + ([osa["hook"]["do"]] if osa.get("hook") else [0.0]))
+        nadpisove_typy = {"karty_slov", "skladany_nadpis", "hravy_nadpis"}
+        hook_do = max([x["do"] for x in osa["prvky"] if x["typ"] in nadpisove_typy and x["od"] < 1.0] + ([osa["hook"]["do"]] if osa.get("hook") else [0.0]))
         for x in osa["prvky"]:
-            if x["typ"] != "karty_slov" and x["od"] < hook_do:
+            if x["typ"] not in nadpisove_typy and x["typ"] not in PRVKY_POZADI and x["od"] < hook_do:
                 trv = x["do"] - x["od"]
                 x["od"] = round(hook_do + 0.2, 2)
                 x["do"] = round(min(osa["delka"], x["od"] + max(2.5, trv)), 2)
@@ -814,13 +849,24 @@ def krok_vzhled(a):
             zbyle.append(m)
         osa["mini"] = zbyle
         # dva texty se v čase nepřekrývají: nadpis končí 0,1 s před dalším prvkem nebo nadpisem
-        zacatky = sorted(x["od"] for x in osa["mini"] + osa["prvky"])
-        for m in osa["mini"] + osa["prvky"]:
+        zacatky = sorted(x["od"] for x in osa["mini"] + osa["prvky"] if x.get("typ") not in PRVKY_POZADI)
+        for m in osa["mini"] + [x for x in osa["prvky"] if x["typ"] not in PRVKY_BEZ_ZKRACENI]:
             dalsi = next((z for z in zacatky if z > m["od"] + 0.5), None)
             if dalsi is not None and m["do"] > dalsi - 0.1:
                 m["do"] = round(max(m["od"] + 1.0, dalsi - 0.1), 2)
+        # Tlačítko Sledovat leží na hrudi jako karta výzvy: naskočí až po ní (konec reelu), výzva se případně zkrátí
+        for sl in [x for x in osa["prvky"] if x["typ"] == "ig_sledovat"]:
+            vyzvy = [m for m in osa["mini"] if (m.get("vyzva") or m.get("styl") == "mini_silny") and m["od"] < sl["do"] and m["do"] > sl["od"]]
+            if vyzvy:
+                start = min(max(m["do"] for m in vyzvy) + 0.1, osa["delka"] - 2.6)
+                for m in vyzvy:
+                    m["do"] = round(max(m["od"] + 1.0, min(m["do"], start - 0.1)), 2)
+                sl["od"], sl["do"] = round(max(sl["od"], start), 2), round(osa["delka"], 2)
         karty_hook = [x for x in osa["prvky"] if x["typ"] == "karty_slov"]
         hook_text = osa["hook"]["text"] if osa.get("hook") else (" | ".join(karty_hook[0]["karty"]) if karty_hook else "")
+        nadpis_efekt = next((x for x in osa["prvky"] if x["typ"] in ("skladany_nadpis", "hravy_nadpis")), None)
+        if not hook_text and nadpis_efekt:
+            hook_text = " ".join(rr["text"] for rr in nadpis_efekt.get("radky", [])) or nadpis_efekt.get("text", "")
         if plan.get("filtr_od_vety") in veta_slova:
             osa["filtr_od"] = round(veta_slova[plan["filtr_od_vety"]][0]["start"], 2)
             k.info("Barevný filtr od věty %s (%.1f s)." % (plan["filtr_od_vety"], osa["filtr_od"]))
@@ -901,6 +947,23 @@ def krok_vzhled(a):
         "mini": [{kk: vv for kk, vv in m.items() if kk in ("text", "styl", "efekt", "veta", "od", "do")} for m in osa["mini"] if m.get("styl") != "mini_silny"],
         "vsuvky": (a.vsuvka or []) + ulozeno.get("vsuvky", []), "zoom": bool(pouzit_zoom), "vyzva": not a.bez_vyzvy,
         "upravy": ulozeno.get("upravy") or {}})
+    # Pojistka (Marcela 23. 11. 2026): nic, co si zákaznice vybrala, nesmí z videa potichu vypadnout.
+    from . import zadani as _zadani
+    chybi_ve_videu = []
+    if plan:
+        chybi_ve_videu += nesestavene
+        chybi_ve_videu += ["%s: ve videu není (žádná věta, kam by patřil, nebo chybí podklady)" % _styl.PRVKY_TEXT.get(x, x)
+                           for x in _zadani.chybejici_ve_videu(styl_reelu, osa, _zadani.nacti(r))
+                           if not any(n_.startswith(_styl.PRVKY_TEXT.get(x, x)) for n_ in nesestavene)]
+    nadpisove = {"karty_slov", "skladany_nadpis", "hravy_nadpis"}
+    if not a.bez_hooku and not osa.get("hook") and not any(x["typ"] in nadpisove for x in osa.get("prvky", [])):
+        chybi_ve_videu.append("nadpis: ve videu žádný není")
+    if chybi_ve_videu:
+        k.cervena("video jsem nestavěla, chybělo by v něm, co si zákaznice vybrala: " + "; ".join(chybi_ve_videu) + ".",
+                  "zjisti, co chybí: STUDIO podklady --reel \"%s\". Zeptej se zákaznice najednou na všechno, co chybí, "
+                  "zapiš to krokem podklady, pak znovu plan a vzhled --plan. Když něco nechce, zapiš podklady --vynechat <efekt>; "
+                  "když nechce nadpis, spusť vzhled s --bez-hooku." % r)
+        return k.kod()
     n = projekt.dalsi_cislo(s["vystup"], "reel", ".mp4")
     mp4 = s["vystup"] / ("reel-%d.mp4" % n)
     prac = s["pracovni"] / ("reel-%d" % n)
@@ -1096,16 +1159,28 @@ def krok_styl(a):
             k.info(text)
         if zachovat:
             st["zachovat_pismo"] = True
-        neznam_prvky = [p for p in (st.get("prvky") or []) if p not in _styl.PRVKY_PLANU and p not in ("vsuvka", "za_hlavou", "casomira", "titulky", "zoom")]
+        from . import zadani as _zadani_m
+        neznam_prvky = [p for p in (st.get("prvky") or []) if p not in _styl.PRVKY_PLANU and p not in ("vsuvka", "za_hlavou", "casomira", "titulky", "zoom")
+                        and p not in _zadani_m.KARTY]
         if neznam_prvky:
             k.info("ℹ️ Prvky %s plán sám nenavrhuje; zákaznice je dá do řádku plánu (viz dovednost novy-reel)." % ", ".join(_styl.PRVKY_TEXT.get(p, p) for p in neznam_prvky))
         cesty = _styl.zapis_styl(r, st, upravy, popis, kod=kod)
+        from . import zadani as _zadani
+        seznam, chybi_podklady = _zadani.seznam_podkladu(r, st)
+        if seznam:
+            print("PODKLADY K VYBRANÝM EFEKTŮM (řekni zákaznici hned, najednou, v jedné zprávě):")
+            for radek in seznam:
+                print(radek)
         pozor = sum(1 for u, _ in hlasky if u == "pozor")
         k.zelena("vzhled %s, %d úprav vzhledu, prvků %s, zvuky %s, obrázků k větám %d%s. Zapsáno: %s, %s, %s." % (
             st["vzhled"], sum(len(v) for v in upravy.get(st["vzhled"], {}).values() if isinstance(v, dict)),
             "všechny" if st.get("prvky") is None else len(st["prvky"]),
             "podle vzhledu" if st.get("zvuky") is None else (", ".join(st["zvuky"]) or "žádné"), len(st.get("obrazky") or []),
             (", %d částí jsem nepochopil (viz ⚠️ výš)" % pozor) if pozor else "", cesty[0], cesty[1], cesty[2]),
+            (("HNED zákaznici napiš jednou zprávou, co si vybrala a co od ní ke každému efektu s ❌ potřebuješ (seznam výš). "
+              "Neptej se po jednom. Odpovědi zapiš: STUDIO podklady --reel \"%s\" --nastav \"efekt.pole=hodnota\" (profil: --profil-jmeno, "
+              "--profil-popis, --profil-fotka). Co nechce, zapiš --vynechat <efekt>. Teprve když podklady hlásí zelenou: " % r)
+             if chybi_podklady else "") +
             "plán a vzhled: STUDIO plan --reel \"%s\" a pak vzhled --reel \"%s\" --plan --zoom." % (r, r))
         return k.kod()
     # obyčejná věta zákaznice pro tento reel (a s --vzdy i trvale)
@@ -1363,6 +1438,52 @@ def krok_vzor(a):
     return k.kod()
 
 
+def krok_podklady(a):
+    """Podklady k efektům z knihovny stylů (Marcela 23. 11. 2026): zapíše, co zákaznice dodala, a vypíše, co ještě chybí.
+    Bez voleb jen vypíše stav. Profil (jméno účtu, řádek pod ním, fotka) se ukládá jednou pro všechny reely."""
+    from . import styl as _styl, zadani as _zadani
+    r = _reel(a.reel)
+    s = projekt.slozky(r)
+    k = Krok("Podklady", s["pracovni"])
+    chyby = []
+    if a.profil_jmeno is not None or a.profil_popis is not None or a.profil_fotka is not None:
+        _, ch = _zadani.nastav_profil(r, a.profil_jmeno, a.profil_popis, a.profil_fotka)
+        chyby += ch
+    if a.nastav or a.vynechat or a.vratit:
+        _, ch = _zadani.nastav(r, a.nastav, a.vynechat, a.vratit)
+        chyby += ch
+    styl_reelu = _styl.nacti(r)
+    vybrane = _zadani.vybrane(styl_reelu)
+    if not vybrane:
+        k.zelena("v tomhle reelu nejsou vybrané efekty, které by potřebovaly podklady.", "pokračuj plánem (STUDIO plan --reel \"%s\")." % r)
+        return k.kod()
+    data, profil = _zadani.nacti(r), _zadani.nacti_profil(r)
+    vety = _zadani._vety_reelu(r)
+    chybi = 0
+    for z in _zadani.kontrola(r, styl_reelu):
+        print("%s %s%s" % ("–" if z["vynechano"] else ("❌" if z["chybi"] else "✅"), z["nazev"], " (vynechat)" if z["vynechano"] else ""))
+        if z["vynechano"]:
+            continue
+        chybi += 1 if z["chybi"] else 0
+        for pole in (_zadani.KARTY.get(z["karta"], {}).get("pole") or _zadani.DRIVE.get(z["karta"]) or []):
+            if pole["druh"] == "pocet":
+                print("     obrázky v PODKLADY-SEM: %s" % pole["otazka"])
+                continue
+            v = _zadani.hodnota(r, z["karta"], pole["klic"], data, profil, vety)
+            zapis = ("--profil-%s" % pole["klic"]) if pole["druh"] == "profil" else ("--nastav \"%s.%s=…\"" % (z["karta"], pole["klic"]))
+            print("     %s %s: %s  [%s]" % ("✓" if v else ("✗" if pole["povinne"] else "·"), pole["klic"],
+                                          (Path(v).name if pole["klic"] == "fotka" else v) if v else pole["otazka"], zapis))
+    for ch in chyby:
+        k.info("⚠️ " + ch)
+    if chyby or chybi:
+        k.cervena("chybí podklady u %d efektů%s." % (chybi, (" a %d zápisů se nepovedlo" % len(chyby)) if chyby else ""),
+                  "napiš zákaznici JEDNOU zprávou, co ke kterému efektu potřebuješ (✗ výš, svými slovy, bez názvů polí); "
+                  "soubory ať dá do složky PODKLADY-SEM. Odpovědi zapiš krokem podklady. Co nechce, --vynechat <efekt>.")
+    else:
+        k.zelena("podklady ke všem vybraným efektům mám.", "STUDIO plan --reel \"%s\", pak vzhled --reel \"%s\" --plan --zoom." % (r, r))
+    return k.kod()
+
+
 def krok_plan(a):
     """Plán obrazovky věta po větě podle knihy střihu. Zákaznice ho schválí nebo upraví, pak se staví vzhled."""
     from . import planer
@@ -1411,6 +1532,16 @@ def krok_plan(a):
     styl_reelu = _styl.nacti(r)                 # kód stylu z knihovny: povolené prvky a obrázky k větám; {} = jako dřív
     for zprava in _styl.pouzij_na_plan(radky, styl_reelu, vety, obrazky):
         k.info(zprava)
+    from . import zadani as _zadani
+    for zprava in _zadani.pridej_do_planu(r, radky, styl_reelu, vety):
+        k.info(zprava)
+    for kk, vv in _styl.PRVKY_TEXT.items():
+        planer.JMENA_PRVKU.setdefault(kk, vv)
+    seznam, chybi_podklady = _zadani.seznam_podkladu(r, styl_reelu)
+    if chybi_podklady:
+        k.info("⚠️ Podklady k vybraným efektům (chybí u %d):" % chybi_podklady)
+        for radek in seznam:
+            print(radek)
     plan, souhrn = planer.sloucit_plan(projekt.nacti_json(s["pracovni"] / "plan-strihu.json"), radky)
     plan.update({"podklady": str(podklady), "schvaleno": False})
     radky = plan["radky"]
@@ -1425,6 +1556,8 @@ def krok_plan(a):
     k.zelena("%d vět, %d prvků s textem, nadpisů od zákaznice %d, WOW %s, chybí obrázky u %d vět. Plán je v PRACOVNI/plan-strihu.md." % (
         len(radky), sum(1 for x in radky if x["prvek"] not in ("zoom", "chybi_obrazek")), sum(1 for x in radky if x["zdroj"] == "nadpis zákaznice"),
         "ano" if wow else "ne", len(chybi)),
+        ("NEJDŘÍV si od zákaznice najednou vyžádej chybějící podklady (seznam ❌ výš) a zapiš je krokem podklady, pak plan znovu. "
+         if chybi_podklady else "") +
         "ukaž plán zákaznici; po „jo“ (nebo úpravách v plan-strihu.json) spusť vzhled s plánem: STUDIO vzhled --reel \"%s\" --plan" % r)
     _prubeh(r)
     return k.kod()
@@ -1622,6 +1755,15 @@ def main(argv=None):
     vz.add_argument("--podklady", help="složka s obrázky k vložkám a mřížce (výchozí PODKLADY-SEM reelu)")
     vz.add_argument("--preset", default="medium")
     vz.set_defaults(f=krok_vzhled)
+    pd = sub.add_parser("podklady", help="podklady k efektům z knihovny stylů: zapsat, co zákaznice dodala, a vypsat, co chybí")
+    pd.add_argument("--reel", required=True)
+    pd.add_argument("--nastav", action="append", help="efekt.pole=hodnota (třeba ig_komentar.slovo=STUDIO); lze víckrát")
+    pd.add_argument("--profil-jmeno", help="jméno účtu na Instagramu (pro všechny reely)")
+    pd.add_argument("--profil-popis", help="řádek pod jménem účtu (pro všechny reely)")
+    pd.add_argument("--profil-fotka", help="profilová fotka (soubor v PODKLADY-SEM nebo celá cesta); zkopíruje se do NASTAVENI")
+    pd.add_argument("--vynechat", action="append", help="efekt, který zákaznice v tomhle reelu nechce (klíč, třeba sprej)")
+    pd.add_argument("--vratit", action="append", help="vrátit dřív vynechaný efekt")
+    pd.set_defaults(f=krok_podklady)
     ed = sub.add_parser("editor", help="editor přepisu v prohlížeči")
     ed.add_argument("--reel", required=True)
     ed.add_argument("--neotvirat", action="store_true", help="neotvírat prohlížeč sám")

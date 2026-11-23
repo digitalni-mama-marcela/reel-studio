@@ -108,8 +108,25 @@ not finish, trying again (attempt 2 of 3)`, česky „⏳ Stahování se nedokon
 7b. **Výběr vzhledu (knihovna stylů).** Když je střih a text hotový, spusť knihovnu NA POZADÍ (běží, dokud
    zákaznice neuloží) a postupuj podle oddílu Výběr z knihovny stylů níž. Když vzhled vybírat nechce, použij její
    poslední styl (`start.py styl --reel "<složka>"`).
+7b2. **Podklady k vybraným efektům: VŽDY hned po uložení stylu, najednou** (Marcela 23. 11. 2026: zákaznice je
+   rychlá a čte jen to, co jí řekneš; bez podkladů se efekt do videa nedostane). Výstup kroku styl má oddíl
+   `PODKLADY K VYBRANÝM EFEKTŮM` (✅ mám, ❌ chybí). Když je tam aspoň jeden ❌, napiš jí JEDNU zprávu, svými slovy,
+   bez názvů polí a příkazů, třeba:
+   „Vybrala sis Tlačítko Sledovat a Komentář jako na Instagramu. Abych je mohla dát do videa, potřebuju od tebe:
+   1) jméno tvého účtu na Instagramu, 2) krátký řádek pod jménem, 3) profilovou fotku (dej ji do složky
+   PODKLADY-SEM, otevřu ti ji), 4) slovo, které mají lidi napsat do komentáře, 5) tvoji odpověď na komentář, jedna
+   věta. Když některý efekt nechceš, napiš.“
+   Neptej se po jednom a nepokračuj dál, dokud podklady nemáš. Složku PODKLADY-SEM jí otevři (Mac `open`, Windows
+   `explorer`). Odpovědi zapiš: `start.py podklady --reel "<složka>" --nastav "ig_komentar.slovo=STUDIO"
+   --nastav "ig_komentar.odpoved=…" --profil-jmeno "…" --profil-popis "…" --profil-fotka "<soubor v PODKLADY-SEM>"`.
+   Názvy polí (`efekt.pole`) a co ještě chybí vypíše `start.py podklady --reel "<složka>"`. Profil (jméno, řádek,
+   fotka) se ukládá pro všechny reely, příště se na něj neptej. Co nechce: `--vynechat <efekt>`. U kterého místa
+   efekt má být, si studio vybere samo; když ho chce jinde: `--nastav "<efekt>.veta=5"` (číslo věty nebo kus věty).
+   Pokračuj, až podklady skončí zeleně (✅).
 7c. **Text nadpisu.** Písmo, barvu a polohu nadpisu má z výběru. Zeptej se jen na text: „Nadpis navrhuju „…“
-   (z tvých slov, nejvýš 10 slov). Beru, nebo napiš svůj?“ Její text dej do kroku 9 (`--hook`) nebo do řádku plánu.
+   (z tvých slov, nejvýš 10 slov). Beru, nebo napiš svůj?“ Její text dej VŽDY do kroku 9 jako `--hook "<text>"`,
+   i s `--plan` (má přednost před plánem; platí i pro skládaný a hravý nadpis). Nadpis je v reelu vždycky, i když
+   ve stylu není karta hooku; bez nadpisu jen když to sama řekne (`--bez-hooku`).
 8. **Plán obrazovky.** `start.py plan --reel "<složka>"` (když má zákaznice ve složce PODKLADY-SEM soubor
    `mikro-nadpisy.txt` nebo obrázky, přidej `--podklady "<složka>/PODKLADY-SEM"`). Krok napíše tabulku
    `PRACOVNI/plan-strihu.md`: věta po větě, co se objeví na obrazovce (karty slov, mikro-nadpis, karta výzvy,
@@ -122,11 +139,16 @@ not finish, trying again (attempt 2 of 3)`, česky „⏳ Stahování se nedokon
    Místo tabulky jí můžeš otevřít stránku **Plán reelu**: `start.py plan-reelu --reel "<složka>"`. Vidí scény jako
    karty, nahraje svoje fotky a screenshoty, přiřadí je k větám a vidí, jestli náhled obsahuje poslední úpravy.
    Krok skončí, až klikne na Hotovo. Když změnila text, udělej `nahled`, pak `vzhled --plan`.
+   Efekty, které si vybrala v knihovně stylů (Tlačítko Sledovat, Komentář jako na Instagramu, Skládaný nadpis,
+   Roj karet…), plán přidá sám k vhodné větě (řádky se zdrojem „styl“); skládaný nebo hravý nadpis nahradí kartu
+   hooku u první věty. Když plán hlásí ⚠️ chybějící podklady, vrať se ke kroku 7b2.
    Další prvky, které zákaznice může do řádku chtít: `karticky` (3 až 5 screenshotů s náklonem), `velke_slovo`,
    `orbit` (obálky reelů krouží kolem ní, obsah `*` = všechny obrázky z podkladů), `zed` (Instagram zeď za ní),
    `prulet` (průlet střihem: jen u věty, která začíná střihem; kamera se ponoří do ní a vynoří v dalším záběru).
-9. **Vzhled (hook, titulky, prvky).** `start.py vzhled --reel "<složka>" --plan --zoom` staví podle plánu
-   (hook i karty slov jsou v plánu). Bez plánu: navrhni hook z jejích slov, nejvýš 10 slov, nic vymyšleného,
+9. **Vzhled (hook, titulky, prvky).** `start.py vzhled --reel "<složka>" --plan --zoom --hook "<potvrzený nadpis>"`
+   staví podle plánu (efekty ze stylu jsou v plánu, studio je umístí samo). Když skončí červeně „video jsem
+   nestavěla, chybělo by v něm…“, nic jí neukazuj: zjisti `start.py podklady`, vyžádej si najednou, co chybí,
+   a spusť plan a vzhled znovu. Efekt, který si vybrala, nikdy potichu nevynechávej. Bez plánu: navrhni hook z jejích slov, nejvýš 10 slov, nic vymyšleného,
    zeptej se „Hook navrhuju: „…“. Beru, nebo napiš svůj?“ a spusť `start.py vzhled --reel "<složka>" --hook "<text>"`
    (volitelně `--vsuvka "SPF *30*@k1-v05"`, `--vzhled serif`). Trvá asi minutu na minutu reelu.
    Přečti výslednou řádku; když hlásí text přes obličej nebo okraj, nabídni „hook níž“ nebo „titulky menší“ a spusť znovu.
@@ -144,7 +166,8 @@ na claude.ai). Nepotřebuje účet ani internet (ukázková videa si studio stá
 3. Řekni jí: „Otevřela jsem ti knihovnu stylů. Vyber nadpisy, titulky, barvy, efekty a zvuky, každá volba se hned
    ukáže na videu. Až budeš mít vybráno, klikni dole na Uložit výběr pro tenhle reel. Pak už nic nepiš, pokračuju sama.“
 4. Čekej, až příkaz na pozadí skončí (dostaneš upozornění). Výstup obsahuje výsledek kroku styl (co pochopil, ⚠️ =
-   část, které nerozuměl) a na konci ✅ Knihovna: výběr uložený a použitý v reelu. Pak rovnou pokračuj krokem 8 (plán).
+   část, které nerozuměl) a na konci ✅ Knihovna: výběr uložený a použitý v reelu. Pak hned krok 7b2 (podklady
+   k vybraným efektům, jednou zprávou), potom 7c a 8.
    Když skončí „zavřela se bez uložení“, zeptej se, jestli ji chce otevřít znovu.
 5. Záloha: kdyby to nešlo (🔴 nebo stránka nejde otevřít), řekni: „Otevři v knihovně dole Kód stylu a pošli mi ho sem.“
    Pak `start.py styl --reel "<složka>" --kod "<celá věta>"`. Když napíše „uloženo“ a příkaz už skončil, výběr je
