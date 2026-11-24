@@ -58,8 +58,11 @@ not finish, trying again (attempt 2 of 3)`, česky „⏳ Stahování se nedokon
    Originál zůstane na místě. Když je soubor jen v iCloudu, krok ti řekne, co má zákaznice kliknout.
    Pak se jednou zeptej: „Chceš v reelu i svoje screenshoty, fotky, nahrávku obrazovky nebo jiné záběry pod
    tvůj hlas (b-roll)? Screenshoty a fotky dej do složky PODKLADY-SEM v tomhle reelu, nahrávky obrazovky do složky
-   NAHRAVKY-OBRAZOVKY uvnitř, záběry přes celou obrazovku do složky B-ROLL uvnitř. Otevřu ti ji. Když má něco
-   patřit k určité větě, stačí mi to napsat.“ Složku otevři (Mac `open`, Windows `explorer`).
+   NAHRAVKY-OBRAZOVKY uvnitř, záběry přes celou obrazovku do složky B-ROLL uvnitř (klidně dlouhé, jak jsi je
+   natočila, nejlepší chvilky si najdu sama). Záběry, které chceš používat pořád, patří do složky MOJE-ZABERY vedle
+   reelů. Otevřu ti ji. Když má něco patřit k určité větě, stačí mi to napsat.“ Složku otevři (Mac `open`, Windows
+   `explorer`). Když dala záběry do B-ROLL nebo MOJE-ZABERY, udělej krok b-roll pod hlasem a) a b) (u kroku 8),
+   hned po přepisu.
    Obrázky (PNG, JPG, WEBP) a nahrávky (MP4, MOV) pak vezme krok 8 (`plan`) a dá je do rámečku nahoře.
    Když ti nahrávku obrazovky přetáhne do chatu nebo napíše, kde je, zkopíruj ji ty (originál zůstane):
    `start.py kopie --reel "<složka>" --nahravka "<cesta k nahrávce>"`
@@ -86,7 +89,8 @@ not finish, trying again (attempt 2 of 3)`, česky „⏳ Stahování se nedokon
    Vulgární slovo nikdy nenech v titulcích bez jejího potvrzení.
 5. **Návrh střihu:** `start.py navrh --reel "<složka>"`. Krok vypíše zdvojené věty a návrh. Přečti zákaznici
    jen to, co se navrhuje vyhodit, jednou větou, a zeptej se: „Souhlasíš, nebo něco vrátit?“
-6. **Náhled:** `start.py nahled --reel "<složka>"` (asi minuta na minutu reelu). Náhled má jednoduché bílé titulky,
+6. **Náhled:** `start.py nahled --reel "<složka>"` (asi minuta na minutu reelu; poprvé s `--tempo uderne|bezne|procitene`
+   podle obsahu, viz b-roll pod hlasem d). Náhled má jednoduché bílé titulky,
    ať zákaznice vidí text. Nadpis, efekty a zvuky v něm ještě nejsou. Přečti výslednou řádku. Když je červená,
    řekni zákaznici větu za „Udělej:“ a nic nevymýšlej. Krok na editor nečeká, ten otevřeš hned v kroku 7.
 7. **Editor přepisu: otevři ho VŽDY po každém náhledu, sama a bez ptaní** (Marcela 23. 11. 2026: zákaznice ho
@@ -151,13 +155,36 @@ not finish, trying again (attempt 2 of 3)`, česky „⏳ Stahování se nedokon
    Další prvky, které zákaznice může do řádku chtít: `karticky` (3 až 5 screenshotů s náklonem), `velke_slovo`,
    `orbit` (obálky reelů krouží kolem ní, obsah `*` = všechny obrázky z podkladů), `zed` (Instagram zeď za ní),
    `prulet` (průlet střihem: jen u věty, která začíná střihem; kamera se ponoří do ní a vynoří v dalším záběru).
-   **B-roll pod hlasem** (Marcela 24. 11. 2026): záběry ze složky PODKLADY-SEM/B-ROLL (MP4, MOV, i HDR z iPhonu
-   a na šířku) dá krok 9 samo přes celý obraz, její hlas běží dál, titulky a efekty taky. Rozmístí je po větách
-   (střih na začátku věty, 1,6 až 4 s, první věta a výzva zůstávají s tváří). Když chce záběr u určité věty:
-   `--broll "<název souboru>@<číslo věty>"` (lze víckrát). Když chce reel jen s hlasem, bez své tváře
-   („udělej to jen s mým hlasem“, „nechci tam být vidět“): `--jen-hlas` (potřebuje aspoň dva záběry v B-ROLL).
-   Když b-roll nechce: `--bez-brollu`. Výpis kroku 9 řekne, který záběr je kde (ℹ️ B-roll pod hlasem): řekni jí to
-   jednou větou. Volby si krok pamatuje pro další verze.
+   **B-roll pod hlasem** (Marcela 24. 11. 2026): záběry přes celý obraz, její hlas běží dál, titulky a efekty taky.
+   Výsledek je vždycky hotové video ze studia (žádný CapCut). Záběry bere ze složky PODKLADY-SEM/B-ROLL v reelu
+   (ty dá studio samo) a ze stálé složky MOJE-ZABERY vedle reelů (ty jen tam, kam je přiřadíš). Postup:
+   a) **Prohlídka:** `start.py zabery --reel "<složka>"`. Řekni předem: „Projdu tvoje záběry, první prohlídka trvá
+      asi minutu na pět minut záběrů, příště už jen nové.“ Studio každý záběr změří (ostrost, světlo, třes kamery,
+      blikání zářivek, střih uvnitř), najde v něm 3 až 4 nejlepší chvilky po 6 až 9 s a nepoužitelné vyřadí s důvodem
+      (řekni jí ho jednou větou: „Záběr z kuchyně je celý roztřesený, ten vynechám.“).
+   b) **Popis podle toho, co na záběrech opravdu je:** krok vypíše náhledy (PRACOVNI/zabery/*.jpg: časová řada
+      celého záběru a ke každé chvilce začátek, střed a konec). Prohlédni si je všechny (nástroj Read), názvy souborů
+      nevěř. Zapiš do PRACOVNI/zabery-popis.json a spusť `start.py zabery --reel "<složka>" --popis "<ten soubor>"`:
+      `{"<soubor>": {"popis": "<co je na záběru>", "chvilky": [{"c": 1, "nazev": "<2 až 3 slova podle obsahu>",
+      "popis": "<co se v chvilce děje>", "nalada": "<klidná, živá, dojemná, veselá…>"}]}}`. Chvilku, kde člověk odejde
+      ze záběru, nic se neděje nebo je vidět něco, co do reelu nepatří, vyřaď: `{"c": 2, "vyradit": "<proč>"}`.
+      Výjimka: krajina a místo bez lidí (tam je hlavní místo samo). Popis se pamatuje v katalogu (KATALOG-ZABERU.txt
+      vedle záběrů), příště popisuješ jen nové záběry.
+   c) **Přiřazení podle smyslu:** krok vypíše věty reelu s čísly. Ke každé větě, kde záběr pomůže, vyber chvilku,
+      která k ní sedí obsahem i náladou (věta o ranním kafi = chvilka s kafem, dojemná věta = klidná chvilka, výčet
+      a energie = živá). S tváří: ne první věta, ne výzva, ne dvě věty za sebou, záběr tam, kde mluví o něčem, co jde
+      ukázat. Jen hlas: ke každé větě. Zapiš `--broll "<název chvilky>@<číslo věty>"` (lze víckrát; zbylé věty doplní
+      studio samo podle kvality). Řekni jí jednou větou, co kam dáváš. Když chce vybírat sama („zeptej se mě“),
+      ber věty po třech: přečti větu a nabídni 2 až 3 chvilky jménem s pár slovy, proč, ona vybere nebo řekne „vyber ty“.
+   d) **Tempo** (krok 6, `nahled --tempo`): úderné (kratší pauzy, záběry do 2,6 s, rychlý začátek natvrdo), běžné,
+      procítěné (pauzy mezi myšlenkami zůstanou, záběry až 5,5 s s jemným prolnutím, začátek jedním klidným záběrem).
+      Navrhni podle obsahu (návod a výčet = úderné, příběh a pocity = procítěné) a potvrď jednou větou. Pamatuje se.
+   e) **Jen hlas** („udělej to jen s mým hlasem“, „nechci tam být vidět“): `--jen-hlas`. Začátek je rychlý (v prvních
+      2 s se střídá víc záběrů), když je záběrů aspoň 3 a tempo není procítěné. Záběry se střídají v přiblížení,
+      oddálení a pomalém posunu, nikdy nestojí. Zvuk záběrů (voda, kroky, nádobí) hraje tiše pod hlasem; když ho
+      nechce: `--bez-zvuku-zaberu` (zpátky `--se-zvukem-zaberu`). Když b-roll nechce vůbec: `--bez-brollu`.
+      Zpátky s tváří: `--s-tvari`. Nové přiřazení místo starého: `--zrus-broll` spolu s novými `--broll`.
+      Výpis kroku 9 řekne, která chvilka je kde (ℹ️ B-roll pod hlasem). Volby si krok pamatuje pro další verze.
 9. **Vzhled (hook, titulky, prvky).** `start.py vzhled --reel "<složka>" --plan --zoom --hook "<potvrzený nadpis>"`
    staví podle plánu (efekty ze stylu jsou v plánu, studio je umístí samo). Když skončí červeně „video jsem
    nestavěla, chybělo by v něm…“, nic jí neukazuj: zjisti `start.py podklady`, vyžádej si najednou, co chybí,
