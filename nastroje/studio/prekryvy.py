@@ -275,23 +275,28 @@ def naplanuj(vety, chvilky, prirazeni=None, jen_hlas=False, delka=None, vyhradit
 
 
 def _pohyb_filtr(pohyb, d, sila):
-    """Pohyb v záběru přes zoompan na dvojnásobném rozlišení (plynulý, bez poskakování po pixelech)."""
+    """Pohyb v záběru: výřez obrazu (přiblížení, oddálení, posun) s přesností pod pixel (perspective, kubicky).
+    OVĚŘENO 24. 11. 2026: zoompan posouval po celých pixelech (krok 0 / 1,5 px, cukání), perspective plynule."""
     n = max(1, int(round(d * FPS)))
-    stred = "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
     if pohyb == "pribliz":
-        z, xy = "1+%.4f*on/%d" % (sila, n), stred
+        z = "(1+%.4f*in/%d)" % (sila, n)
     elif pohyb == "oddal":
-        z, xy = "%.4f-%.4f*on/%d" % (1 + sila, sila, n), stred
+        z = "(%.4f-%.4f*in/%d)" % (1 + sila, sila, n)
     elif pohyb in ("posun-vpravo", "posun-vlevo"):
         z = "%.4f" % (1 + sila)
-        smer = "on/%d" % n if pohyb == "posun-vpravo" else "(1-on/%d)" % n
-        xy = "x='(iw-iw/zoom)*%s':y='ih/2-(ih/zoom/2)'" % smer
     elif pohyb == "stab-blize":
-        z, xy = "%.3f" % BLIZE, stred
+        z = "%.3f" % BLIZE
     else:
         return ""
-    return ("scale=%d:%d:flags=bicubic,zoompan=z='%s':%s:d=1:s=%dx%d:fps=%d," %
-            (SIRKA * 2, VYSKA * 2, z, xy, SIRKA, VYSKA, FPS))
+    if pohyb.startswith("posun"):
+        cast = ("in/%d" % n) if pohyb == "posun-vpravo" else ("(1-in/%d)" % n)
+        x0 = "(W-W/%s)*%s" % (z, cast)
+        x1 = "%s+W/%s" % (x0, z)
+    else:
+        x0, x1 = "W/2-W/(2*%s)" % z, "W/2+W/(2*%s)" % z
+    y0, y2 = "H/2-H/(2*%s)" % z, "H/2+H/(2*%s)" % z
+    return ("perspective=x0='%s':y0='%s':x1='%s':y1='%s':x2='%s':y2='%s':x3='%s':y3='%s':interpolation=cubic:eval=%s," %
+            (x0, y0, x1, y0, x0, y2, x1, y2, "init" if pohyb == "stab-blize" else "frame"))
 
 
 def filtr(p, vstup, vystup, base_in, base_out):
