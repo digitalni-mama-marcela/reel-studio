@@ -56,9 +56,10 @@ not finish, trying again (attempt 2 of 3)`, česky „⏳ Stahování se nedokon
 2. **Video.** Zeptej se: „Kde máš natočené video? Přetáhni ho sem, nebo mi napiš, kde je.“ Pak:
    `start.py kopie --reel "<složka>" "<cesta k videu>" ["<druhé video>"]`
    Originál zůstane na místě. Když je soubor jen v iCloudu, krok ti řekne, co má zákaznice kliknout.
-   Pak se jednou zeptej: „Chceš v reelu i svoje screenshoty, fotky nebo nahrávku obrazovky? Screenshoty a fotky
-   dej do složky PODKLADY-SEM v tomhle reelu, nahrávky obrazovky do složky NAHRAVKY-OBRAZOVKY uvnitř. Otevřu ti
-   ji. Když má něco patřit k určité větě, stačí mi to napsat.“ Složku otevři (Mac `open`, Windows `explorer`).
+   Pak se jednou zeptej: „Chceš v reelu i svoje screenshoty, fotky, nahrávku obrazovky nebo jiné záběry pod
+   tvůj hlas (b-roll)? Screenshoty a fotky dej do složky PODKLADY-SEM v tomhle reelu, nahrávky obrazovky do složky
+   NAHRAVKY-OBRAZOVKY uvnitř, záběry přes celou obrazovku do složky B-ROLL uvnitř. Otevřu ti ji. Když má něco
+   patřit k určité větě, stačí mi to napsat.“ Složku otevři (Mac `open`, Windows `explorer`).
    Obrázky (PNG, JPG, WEBP) a nahrávky (MP4, MOV) pak vezme krok 8 (`plan`) a dá je do rámečku nahoře.
    Když ti nahrávku obrazovky přetáhne do chatu nebo napíše, kde je, zkopíruj ji ty (originál zůstane):
    `start.py kopie --reel "<složka>" --nahravka "<cesta k nahrávce>"`
@@ -150,6 +151,13 @@ not finish, trying again (attempt 2 of 3)`, česky „⏳ Stahování se nedokon
    Další prvky, které zákaznice může do řádku chtít: `karticky` (3 až 5 screenshotů s náklonem), `velke_slovo`,
    `orbit` (obálky reelů krouží kolem ní, obsah `*` = všechny obrázky z podkladů), `zed` (Instagram zeď za ní),
    `prulet` (průlet střihem: jen u věty, která začíná střihem; kamera se ponoří do ní a vynoří v dalším záběru).
+   **B-roll pod hlasem** (Marcela 24. 11. 2026): záběry ze složky PODKLADY-SEM/B-ROLL (MP4, MOV, i HDR z iPhonu
+   a na šířku) dá krok 9 samo přes celý obraz, její hlas běží dál, titulky a efekty taky. Rozmístí je po větách
+   (střih na začátku věty, 1,6 až 4 s, první věta a výzva zůstávají s tváří). Když chce záběr u určité věty:
+   `--broll "<název souboru>@<číslo věty>"` (lze víckrát). Když chce reel jen s hlasem, bez své tváře
+   („udělej to jen s mým hlasem“, „nechci tam být vidět“): `--jen-hlas` (potřebuje aspoň dva záběry v B-ROLL).
+   Když b-roll nechce: `--bez-brollu`. Výpis kroku 9 řekne, který záběr je kde (ℹ️ B-roll pod hlasem): řekni jí to
+   jednou větou. Volby si krok pamatuje pro další verze.
 9. **Vzhled (hook, titulky, prvky).** `start.py vzhled --reel "<složka>" --plan --zoom --hook "<potvrzený nadpis>"`
    staví podle plánu (efekty ze stylu jsou v plánu, studio je umístí samo). Když skončí červeně „video jsem
    nestavěla, chybělo by v něm…“, nic jí neukazuj: zjisti `start.py podklady`, vyžádej si najednou, co chybí,

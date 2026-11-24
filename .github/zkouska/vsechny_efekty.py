@@ -12,6 +12,8 @@ import sys
 from pathlib import Path
 
 R, OUT, STUDIO = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3:]
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")      # konzole na Windows neumí ✓ a ✗
 NASTROJE = Path(__file__).resolve().parents[2] / "nastroje"
 sys.path.insert(0, str(NASTROJE))
 from PIL import Image, ImageDraw  # noqa: E402
@@ -30,7 +32,7 @@ HODNOTY = ["skladany_nadpis.radky=naučíme se | jak nechat Clauda | stříhat r
            "hravy_nadpis_gesta.nadpisy=NATOČÍM | CLAUDE | stříhá", "ig_komentar.slovo=" + SLOVO,
            "ig_komentar.odpoved=Posílám odkaz.", "sprej.text=reel",
            "papir_profil.cisla=145 příspěvků | 20 tis. sledujících | 300 sledovaných",
-           "papir_otazka.text=Kolik hodin stříháš?", "papir_komentare.texty=Konečně | Chci taky",
+           "papir_otazka.text=Kolik hodin stříháš?", "papir_otazka.veta=2", "papir_profil.veta=2", "papir_komentare.texty=Konečně | Chci taky",
            "rucni_poznamka.text=tohle jsem já | bez stříhání", "psany_skrt.text=hodiny stříhání",
            "obalka_casopisu.nazev=máma", "obalka_casopisu.titulky=Celé video | sestříhané",
            "pocitadlo.kroky=SUROVÝ ZÁZNAM 3:52 | HOTOVÝ REEL 0:45",
@@ -45,7 +47,7 @@ HODNOTY = ["skladany_nadpis.radky=naučíme se | jak nechat Clauda | stříhat r
 def kod(efs, pol="hrud", pN="nahore", rez="slovo", vz="vlastní", fN="Montserrat", fT="Playfair Display"):
     POL = {"hrud": "na hrudi", "vedle": "vedle hlavy", "dole": "dole"}
     REZ = {"slovo": "po jednom slově", "veta": "celé věty", "veta_zvyr": "celé věty, zvýrazněné slovo"}
-    e = [NAZEV[k] for k in efs]
+    e = [NAZEV[k] for k in efs if k in NAZEV]
     return "styl: %s; nadpisy: %s, #FFD43B, %s; titulky: %s, bílé, %s, %s, 100 %%; prvky: %s; zvuky: Cink (70 %%)" % (
         vz, fN, "uprostřed" if pN == "stred" else "nahoře", fT, POL[pol], REZ[rez], ", ".join(e) if e else "jen základ")
 
@@ -61,6 +63,10 @@ def ve_videu(k, osa):
         return any(m.get("vyzva") or m.get("styl") == "mini_silny" for m in osa.get("mini", []))
     if k == "vsuvka":
         return bool(osa.get("vsuvky"))
+    if k == "hook":
+        return bool(osa.get("hook")) or bool(typy & {"karty_slov", "skladany_nadpis", "hravy_nadpis"})
+    if k in ("broll", "jen-hlas"):
+        return len(osa.get("prekryvy") or []) >= 2
     if k == "velke_slovo":
         return any(m.get("styl") == "slovo_velke" for m in osa.get("mini", []))
     if k == "casomira":
@@ -79,6 +85,8 @@ def cas_efektu(k, osa):
         kand = [m for m in osa.get("mini", []) if m.get("vyzva") or m.get("styl") == "mini_silny"]
     if k == "vsuvka":
         kand = osa.get("vsuvky", [])
+    if k in ("broll", "jen-hlas"):
+        kand = osa.get("prekryvy", [])
     if kand and "od" in kand[0]:
         x = kand[0]
         return x["od"] + min(1.2, (x.get("do", x["od"] + 1) - x["od"]) * 0.6)
@@ -104,6 +112,8 @@ for pol in ("hrud", "vedle", "dole"):
     for rez in ("slovo", "veta", "veta_zvyr"):
         ulohy.append(([], "titulky-%s-%s" % (pol, rez), {"pol": pol, "rez": rez}))
 ulohy.append(([], "nadpis-uprostred", {"pN": "stred"}))
+# b-roll pod hlasem (prekryvy.py): dva záběry v PODKLADY-SEM/B-ROLL, jeden na šířku, jeden HDR jako z iPhonu
+ulohy += [(["broll"], "broll", {}), (["jen-hlas"], "jen-hlas", {})]
 import os  # noqa: E402
 if os.environ.get("JEN"):        # jen vybrané položky (čárkami), pro ladění
     ulohy = [u for u in ulohy if u[1] in os.environ["JEN"].split(",")]
@@ -114,6 +124,15 @@ for radek in kde.splitlines():
     if radek.startswith("ffmpeg:"):
         ff = radek.split(":", 1)[1].strip()
 
+b = p / "B-ROLL"
+b.mkdir(exist_ok=True)
+subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i", "mandelbrot=size=1920x1080:rate=25", "-t", "6",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", str(b / "na-sirku.mp4")], check=True)
+subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=1080x1920:rate=30", "-t", "6", "-vf",
+                "format=yuv420p,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv,"
+                "zscale=t=linear:npl=203,format=gbrpf32le,zscale=p=bt2020:t=arib-std-b67:m=bt2020nc:r=tv,format=yuv420p10le",
+                "-c:v", "libx265", "-x265-params", "log-level=error", "-tag:v", "hvc1", "-color_primaries", "bt2020",
+                "-color_trc", "arib-std-b67", "-colorspace", "bt2020nc", str(b / "hdr-iphone.mov")], check=True)
 vysledky, chyby = [], 0
 for efs, nazev, kw in ulohy:
     for f in (R / "VYSTUP").glob("reel-*"):
@@ -124,7 +143,8 @@ for efs, nazev, kw in ulohy:
               "--profil-fotka", str(p / "ja.jpg")] + sum((["--nastav", h] for h in HODNOTY
                                                           if h.split(".")[0] in efs), []),
              ("plan", "--reel", str(R)),
-             ("vzhled", "--reel", str(R), "--plan", "--zoom", "--hook", "Já už se nechci učit CapCut")]
+             ("vzhled", "--reel", str(R), "--plan", "--zoom", "--hook", "Já už se nechci učit CapCut")
+             + (() if efs in (["broll"], ["jen-hlas"]) else ("--bez-brollu",)) + (("--jen-hlas",) if efs == ["jen-hlas"] else ())]
     kody = []
     for k in kroky:
         kod_, out = beh(*k)

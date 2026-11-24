@@ -8,6 +8,7 @@ import re
 import subprocess
 from pathlib import Path
 
+from . import prekryvy as prekryvy_modul
 from . import zoom as zoom_modul
 from .titulky import FPS, SIRKA, STYLY, VYSKA, Kreslic
 
@@ -223,7 +224,14 @@ def _render(osa, styl_nazev, vystup, pracovni, log=None, bez_textu=False, preset
         s_filtrem = not bez_textu and STYLY.get(styl_nazev, {}).get("filtr") and c["vystup_od"] + 0.01 >= float(osa.get("filtr_od") or 0.0)
         barevny = ("," + STYLY[styl_nazev]["filtr"]) if s_filtrem else ""
         filtr.append("[%d:v]fps=%d,%s%s,setsar=1,trim=duration=%.4f,setpts=PTS-STARTPTS[v%d]" % (i, FPS, zoom, barevny, c["delka"], i))
-    filtr.append("%sconcat=n=%d:v=1:a=0[base]" % ("".join("[v%d]" % i for i in range(n)), n))
+    prekryvy = [] if bez_textu else (osa.get("prekryvy") or [])
+    filtr.append("%sconcat=n=%d:v=1:a=0[%s]" % ("".join("[v%d]" % i for i in range(n)), n, "b0" if prekryvy else "base"))
+    if prekryvy:
+        # b-roll pod hlasem (prekryvy.py): záběry přes celý obraz, vstupy až za zvukem a textem
+        prvni = n + 1 + (0 if jen_zaklad else 1)
+        for j, pk in enumerate(prekryvy):
+            filtr.append(prekryvy_modul.filtr(pk, prvni + j, "p%d" % j, "b%d" % j,
+                                              "base" if j == len(prekryvy) - 1 else "b%d" % (j + 1)))
     if bez_textu or jen_zaklad:
         filtr.append("[base]format=yuv420p[vout]")
         vstup_textu = []
@@ -232,7 +240,7 @@ def _render(osa, styl_nazev, vystup, pracovni, log=None, bez_textu=False, preset
         vstup_textu = ["-f", "rawvideo", "-pix_fmt", "rgba", "-s", "%dx%d" % (SIRKA, VYSKA), "-r", str(FPS), "-i", "-"]
     zvuk_render = zvuk_nrm if (bez_textu or jen_zaklad) else _zvuk_se_zvuky(osa, pracovni)
     cmd = (["ffmpeg", "-y", "-v", "error", "-nostdin"] + vstupy + ["-i", str(zvuk_render)] + vstup_textu +
-           ["-filter_complex", ";".join(filtr), "-map", "[vout]", "-map", "%d:a" % n,
+           prekryvy_modul.vstupy(prekryvy) + ["-filter_complex", ";".join(filtr), "-map", "[vout]", "-map", "%d:a" % n,
             "-c:v", "libx264", "-preset", preset, "-crf", "14" if jen_zaklad else "18", "-pix_fmt", "yuv420p", "-r", str(FPS),
             "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
             "-c:a", "aac", "-b:a", "192k", "-t", "%.4f" % osa["delka"], "-movflags", "+faststart", str(vystup)])
