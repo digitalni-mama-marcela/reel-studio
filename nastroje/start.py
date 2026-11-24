@@ -210,8 +210,9 @@ def ffmpeg_jede(ffmpeg, ffprobe):
     return True
 
 
-def ffmpeg_umi(ffmpeg):
-    """Má tenhle ffmpeg všechno, co studio potřebuje? Stejná pravidla jako kontrola počítače."""
+def ffmpeg_umi(ffmpeg, hdr=True):
+    """Má tenhle ffmpeg všechno, co studio potřebuje? Stejná pravidla jako kontrola počítače.
+    hdr=False: stačí bez převodu HDR (zscale, tonemap)."""
     if str(TADY) not in sys.path:
         sys.path.insert(0, str(TADY))
     try:
@@ -221,8 +222,11 @@ def ffmpeg_umi(ffmpeg):
     filtry = spust_tiche([ffmpeg, "-hide_banner", "-filters"], limit=30)[1]
     dekodery = spust_tiche([ffmpeg, "-hide_banner", "-decoders"], limit=30)[1]
     kodery = spust_tiche([ffmpeg, "-hide_banner", "-encoders"], limit=30)[1]
-    return (all(k.ma_polozku(filtry, f) for f in k.POTREBNE_FILTRY) and k.ma_polozku(dekodery, "hevc")
-            and any(k.ma_polozku(kodery, x) for x in k.KODERY_H264))
+    # zscale a tonemap převádí HDR z iPhonu (kontrola_videa.umi_hdr). ffmpeg z Homebrew je nemá (OVĚŘENO 24. 11. 2026),
+    # tak si studio stáhne vlastní, jinak by HDR video skončilo červeně a příprava by nepomohla.
+    navic = ["zscale", "tonemap"] if hdr else []
+    return (all(k.ma_polozku(filtry, f) for f in k.POTREBNE_FILTRY + navic)
+            and k.ma_polozku(dekodery, "hevc") and any(k.ma_polozku(kodery, x) for x in k.KODERY_H264))
 
 
 def stahni(url, cil, pokusu=3):
@@ -303,7 +307,12 @@ def priprav_ffmpeg(tise=False):
         return False, "Pro tenhle systém studio ffmpeg stáhnout neumí."
     if not tise:
         print("⏳ Stahuju ffmpeg, program na práci s videem (%s, jednou)." % VELIKOST_FFMPEG[druh], flush=True)
-    return stahni_ffmpeg(druh)
+    ok, zprava = stahni_ffmpeg(druh)
+    # Stažení se nepovedlo, ale ffmpeg v počítači umí všechno kromě HDR: studio jede s ním dál
+    # a jen HDR video skončí červeně s radou spustit přípravu znovu (kontrola_videa.umi_hdr).
+    if not ok and ffmpeg_jede(systemovy, systemovy_probe) and ffmpeg_umi(systemovy, hdr=False):
+        return True, "ffmpeg je připravený (%s), jen HDR video z iPhonu zatím nepřevede: %s" % (systemovy, zprava)
+    return ok, zprava
 
 
 def slozka_ukazek():

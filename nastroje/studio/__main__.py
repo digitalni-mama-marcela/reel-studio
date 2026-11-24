@@ -16,6 +16,7 @@ Každý krok skončí jednou českou řádkou (✅ nebo 🔴) a zapíše se do P
 """
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -415,6 +416,14 @@ def _poloha_klipu(klip, slozka):
     return data
 
 
+def _hook_opakuje_vetu(text, slova):
+    """Říká nadpis totéž co věta (je v ní celý, bez interpunkce a velikosti písmen)? Pak by titulky byly dvakrát."""
+    def norm(t):
+        return " ".join(re.sub(r"[^\w\s]", " ", t.lower()).split())
+    nadpis = norm(text or "")
+    return bool(nadpis) and nadpis in norm(" ".join(w["w"] for w in slova))
+
+
 def _vychozi_hook(text, max_slov=10):
     """Výchozí hook bez zadání: první věta reelu po první tečku, otazník nebo vykřičník, nejvýš max_slov slov."""
     import re as _re
@@ -483,6 +492,9 @@ def krok_vzhled(a):
     vety_text = {v["id"]: v["text"] for kl in klipy for v in kl["vety"]}
     veta_slova = {}
     for w in osa["slova"]:
+        # velké písmeno uprostřed věty = vlastní jméno (Marcela, Claude, Canva): titulky ho nezmenší (Marcela 24. 11. 2026)
+        if w["veta"] in veta_slova and re.match(r"^[\"„(]*[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]", w["w"]):
+            w["jmeno"] = True
         veta_slova.setdefault(w["veta"], []).append(w)
     prvni = next((u["vety"][0] for u in osa["useky"] if u.get("vety")), None)
     # hook: zadaný, uložený, nebo první věta
@@ -491,8 +503,7 @@ def krok_vzhled(a):
     if hook_text and not a.bez_hooku:
         h = veta_slova.get(prvni, [{"end": 2.6}])
         osa["hook"] = {"text": hook_text, "od": 0.1, "do": round(min(max(h[-1]["end"] + 0.4, 2.6), 5.0), 2)}
-        prvni_text = " ".join(w["w"] for w in veta_slova.get(prvni, [])).lower()
-        if hook_text.lower().rstrip(".,") in prvni_text:
+        if _hook_opakuje_vetu(hook_text, veta_slova.get(prvni, [])):
             osa["hook"]["skryt_titulky"] = True     # hook říká totéž co první věta, titulky by byly dvakrát
         if titulky.STYLY[styl]["hook"].get("podklad"):
             osa["hook"].update({"efekt": "pop", "zvyraznit": [zvyraznit] if zvyraznit else [], "marker_od": 0.35,
@@ -617,7 +628,10 @@ def krok_vzhled(a):
                 osa["prvky"].append({"typ": "karty_slov", "od": max(0.1, od_v), "do": round(min(od_v + max(1.2, 0.9 * len(fraze)), do_v + 0.3), 2),
                                      "karty": fraze, "skryt_titulky": True, "casomira": True})
             elif prvek == "hook":
-                osa["hook"] = {"text": obsah, "od": 0.1, "do": round(min(max(do_v + 0.4, 2.6), 5.0), 2), "skryt_titulky": True}
+                # titulky schovat, jen když nadpis říká totéž co věta (24. 11. 2026: vlastní nadpis Marcely
+                # „Přesně ten produkt…“ nad jinou první větou schoval titulky na prvních 5 s)
+                osa["hook"] = {"text": obsah, "od": 0.1, "do": round(min(max(do_v + 0.4, 2.6), 5.0), 2),
+                               "skryt_titulky": _hook_opakuje_vetu(obsah, veta_slova[vid])}
                 if titulky.STYLY[styl]["hook"].get("podklad"):
                     osa["hook"].update({"efekt": "pop", "zvyraznit": [max(obsah.split(), key=len)], "marker_od": 0.35,
                                         "velikost": titulky.STYLY[styl]["hook"]["velikost"]})
@@ -637,7 +651,38 @@ def krok_vzhled(a):
                 velikost_n = int(round(zakl * float(vel[:-1]) / 100)) if vel.endswith("%") else (int(vel) if vel.isdigit() else zakl)
                 osa["mini"].append({"text": "\n".join(cisty), "radky_styl": rs, "styl": st_n, "efekt": "zleva", "od": round(od_v, 2),
                                     "do": round(max(do_v + 0.4, od_v + 2.2), 2), "veta": vid, "velikost": velikost_n,
-                                    "velikost_zadana": velikost_n, "y": 0})
+                                    "velikost_zadana": velikost_n, "y": 0, "nahore": bool(rad.get("nahore"))})
+                if rad.get("postupne"):
+                    # řádky naskakují postupně, každý když zazní jeho první slovo, pak zůstanou všechny spolu
+                    # (Marcela 24. 11. 2026: „Captions, CapCut, Canva postupně, pak všechno najednou“)
+                    def _koren(t):
+                        return re.sub(r"[^\w]", "", t.lower())[:4]
+                    zp, hledej_od = [], 0
+                    for i_r, radek_t in enumerate(cisty):
+                        cil = _koren(radek_t.split()[0]) if radek_t.split() else ""
+                        sl_v = [w for w in osa["slova"] if w["start"] >= od_v - 0.05]   # i slova dalších vět
+                        j = next((j for j in range(hledej_od, len(sl_v)) if cil and _koren(sl_v[j]["w"]) == cil), None)
+                        if j is None:
+                            zp.append(round((zp[-1] if zp else 0.0) + 0.5, 2) if zp else 0.0)
+                        else:
+                            zp.append(round(max(zp[-1] if zp else 0.0, sl_v[j]["start"] - od_v), 2))
+                            hledej_od = j + 1
+                    if len(cisty) == 1:
+                        # jeden řádek: naskakují slova (bez oddělovačů), řádek stojí na místě
+                        slova_r = [x for x in cisty[0].split() if x.strip("·•|–-")]
+                        zp, hledej_od = [], 0
+                        for slovo_r in slova_r:
+                            cil = _koren(slovo_r)
+                            j = next((j for j in range(hledej_od, len(sl_v)) if cil and _koren(sl_v[j]["w"]) == cil), None)
+                            if j is None:
+                                zp.append(round((zp[-1] + 0.5) if zp else 0.0, 2))
+                            else:
+                                zp.append(round(max(zp[-1] if zp else 0.0, sl_v[j]["start"] - od_v), 2))
+                                hledej_od = j + 1
+                        osa["mini"][-1]["radky_styl"][0]["slova_od"] = zp
+                    else:
+                        osa["mini"][-1]["zpozdeni_radku"] = zp
+                    osa["mini"][-1]["do"] = round(max(osa["mini"][-1]["do"], od_v + zp[-1] + 1.5), 2)
                 if any(r.get("psani") for r in rs):
                     # řádek psaný po písmenech začne, až velký řádek dojede (Marcela 29. 10., vzor se zvukem klávesnice)
                     osa["mini"][-1]["zpozdeni_radku"] = [0.35 if r.get("psani") else 0.0 for r in rs]
@@ -690,6 +735,9 @@ def krok_vzhled(a):
                         pv["vyrez"] = d_.split("=", 1)[1].strip().lower()
                     elif d_:
                         pv["nazev"] = d_
+                if rad.get("do_konce"):
+                    # obrázek zůstane až do konce reelu (Marcela 24. 11. 2026: screenshot profilu do úplného konce)
+                    pv["do"], pv["do_konce"] = round(osa["delka"], 2), True
                 osa["prvky"].append(pv)
             elif prvek == "velke_slovo" and obsah:
                 # jedno velké slovo ve chvíli, kdy ho řekne (Marcela 19. 10.: „nadpis“ jako z časopisu)
@@ -861,7 +909,7 @@ def krok_vzhled(a):
         osa["mini"] = zbyle
         # dva texty se v čase nepřekrývají: nadpis končí 0,1 s před dalším prvkem nebo nadpisem
         zacatky = sorted(x["od"] for x in osa["mini"] + osa["prvky"] if x.get("typ") not in PRVKY_POZADI)
-        for m in osa["mini"] + [x for x in osa["prvky"] if x["typ"] not in PRVKY_BEZ_ZKRACENI]:
+        for m in osa["mini"] + [x for x in osa["prvky"] if x["typ"] not in PRVKY_BEZ_ZKRACENI and not x.get("do_konce")]:
             dalsi = next((z for z in zacatky if z > m["od"] + 0.5), None)
             if dalsi is not None and m["do"] > dalsi - 0.1:
                 m["do"] = round(max(m["od"] + 1.0, dalsi - 0.1), 2)

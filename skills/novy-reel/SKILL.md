@@ -65,8 +65,9 @@ not finish, trying again (attempt 2 of 3)`, česky „⏳ Stahování se nedokon
    Nahrávka hraje bez zvuku od začátku, nejvýš 8 s, pak drží poslední snímek. Řekni jí: „Nahrávku si zkrať
    na tu část, kterou chceš ukázat (iPhone: Upravit, Mac: QuickTime Oříznout, Windows: Fotky nebo Clipchamp).“
    Videa přímo v PODKLADY-SEM (mimo NAHRAVKY-OBRAZOVKY) studio bere jako pokračování jejího mluvení.
-3. **Kontrola videa:** `start.py kontrola-videa --reel "<složka>"`. Když je video HDR, krok řekne, co udělat
-   v iPhonu. Předej to zákaznici doslova.
+3. **Kontrola videa:** `start.py kontrola-videa --reel "<složka>"`. HDR video z iPhonu studio
+   převede na běžné barvy samo a jen to oznámí (originál zůstane). Když HDR krok skončí červeně, spusť
+   `start.py priprava` (stáhne ffmpeg, který HDR umí) a krok zopakuj. Zákaznici HDR v iPhonu vypínat nemusí.
 4. **Přepis:** `start.py prepis --reel "<složka>"` (trvá asi půl délky videa). Když se model přepisu ještě
    stahuje na pozadí (`start.py model --stav`), řekni jí, že první přepis počká, než se dostáhne. Pak si přečti jen soubor
    `PRACOVNI/klip-*/prepis-vety.txt`: věty s čísly.

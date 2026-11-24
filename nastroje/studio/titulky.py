@@ -379,7 +379,11 @@ def upravy_pisma(vzhled, nadpis=None, titulky=None):
 
 
 def zobraz(w, styl):
-    """Text slova na obrazovce: bez interpunkce na okrajích (kromě ? a !), velikost podle stylu."""
+    """Text slova na obrazovce: bez interpunkce na okrajích (kromě ? a !), velikost podle stylu.
+    w = text, nebo slovo z časové osy; slovo s "jmeno" (velké písmeno uprostřed věty) si velké písmeno nechá."""
+    jmeno = isinstance(w, dict) and w.get("jmeno")
+    if isinstance(w, dict):
+        w = w["w"]
     t = re.sub(r"^[\"„“”'(\[]+|[\"„“”')\]]+$", "", w.strip())
     t = re.sub(r"[.,;:…]+$", "", t)
     t = re.sub(r"(?<=\d)-(?=\d)", "–", t)
@@ -387,7 +391,7 @@ def zobraz(w, styl):
         return t.upper()
     if styl.get("puvodni_pismena"):      # jak zaznělo v přepisu (Claude, CapCutu), vzhled jedno_slovo
         return t
-    return t if re.match(r"^[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]{2,}", t) else t.lower()
+    return t if (jmeno or re.match(r"^[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]{2,}", t)) else t.lower()
 
 
 def rozdel(sirky, mezera, max_sirka):
@@ -486,7 +490,7 @@ def vykresli_titulky(slova_strany, k_zni, styl, stred=None):
                     velikost=int(styl["velikost"] * k.get("pomer", 1.3)), max_sirka=int(styl["max_sirka"] * k.get("pomer", 1.3)),
                     stin=k.get("stin", styl.get("stin")))
     font = pismo(styl["pismo"], styl["velikost"], styl["varianta"])
-    texty = [zobraz(w["w"] if isinstance(w, dict) else w, styl) for w in slova_strany]
+    texty = [zobraz(w, styl) for w in slova_strany]
     radky, sirky, mezera, sb, vb, vr = blok_textu(texty, font, styl, styl["max_sirka"])
     pad = 40
     plocha = (int(sb) + 2 * pad, int(vb) + 2 * pad)
@@ -637,7 +641,7 @@ def vypln_stranky(slova, styl):
     stranky, aktualni = [], []
 
     def vejde(sl):
-        sirky = [font.getlength(zobraz(w["w"], styl)) for w in sl]
+        sirky = [font.getlength(zobraz(w, styl)) for w in sl]
         return len(rozdel(sirky, mezera, styl["max_sirka"])) <= styl["radku"]
 
     for i, w in enumerate(slova):
