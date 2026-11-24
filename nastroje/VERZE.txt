@@ -1,1 +1,1 @@
-verze 0.4.202611241445, studio 36 souborů, sestaveno ze složky jadro/studio
+verze 0.4.202611241501, studio 36 souborů, sestaveno ze složky jadro/studio
