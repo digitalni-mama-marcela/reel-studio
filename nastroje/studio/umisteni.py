@@ -76,7 +76,7 @@ def titulky_vedle_hlavy(osa, st, obliceje, odstup=36, prekazky=None):
         if not okno:
             polohy.append(None)
             continue
-        w = font.getlength(" ".join(titulky.zobraz(x["w"], st) for x in s))
+        w = font.getlength(" ".join(titulky.zobraz(x, st) for x in s))
         cy_tvar = max(HORNI_OKRAJ + 80, min(VYSKA - DOLNI_OKRAJ - 80, okno[1] + 0.55 * (okno[3] - okno[1])))
         vlevo, vpravo = okno[0] - odstup - BOK, SIRKA - BOK - odstup - okno[2]
         strany = [(okno[0] - odstup - w / 2, cy_tvar), (okno[2] + odstup + w / 2, cy_tvar)]
@@ -145,6 +145,11 @@ def umisti(osa, styl_nazev, obliceje):
                 if okno:
                     mista.append(int(okno[1]) - MEZERA - vb)
                 # nadpis je nadpis: nahoře, pod bradou nebo nad obličejem, nikdy dole jako titulek (Marcela 18. 10.)
+                if styl["hook"].get("stred"):
+                    # knihovna stylů „Nadpisy uprostřed videa“ (za tebou, když stojíš dál): střed obrazu, za osobou
+                    y = int(VYSKA * 0.42 - vb / 2)
+                    h["y"], h["velikost"], h["za_hlavou"], ok = y, velikost, True, True
+                    break
                 for y in mista:
                     if y < HORNI_OKRAJ:
                         continue
@@ -191,7 +196,7 @@ def umisti(osa, styl_nazev, obliceje):
                 vejde = sb <= SIRKA - 2 * BOK and y + vb <= horni_titulky - 24
                 # nadpis ve stylu „za hlavou“ pod bradou by schovalo tělo (Marcela 21. 10., hook zmizel za svetrem):
                 # zkusit nejdřív nad hlavu; když to nejde, až dole pod bradou jako štítek vpředu
-                if vejde and okno and styl.get(m.get("styl", "mini"), {}).get("za_hlavou") and not m.get("za_hlavou_pod_bradou"):
+                if vejde and okno and (styl.get(m.get("styl", "mini"), {}).get("za_hlavou") or m.get("nahore")) and not m.get("za_hlavou_pod_bradou"):
                     vejde = False
                 hlava_u_okraje = bool(okno) and okno[1] < HORNI_OKRAJ + 180
                 if not vejde and okno and sb <= SIRKA - 2 * BOK and not hlava_u_okraje:
@@ -218,7 +223,7 @@ def umisti(osa, styl_nazev, obliceje):
             if vejde:
                 m["y"], m["velikost"], ok = y, velikost, True
             velikost -= 4
-        if not ok and okno and m.get("styl") in ("mini_nahore", "mini") and "podklad" in styl.get("mini", {}):
+        if not ok and okno and m.get("styl") in ("mini_nahore", "mini") and "podklad" in styl.get("mini", {}) and not m.get("nahore"):
             # hlava sahá až k hornímu okraji (text za hlavou by nebyl čitelný): nadpis jde pod bradu jako štítek
             # místo titulků (titulky se po tu dobu schovají), zadání 19. 10., oddíl 5 „dvouřádkový nápis v obdélnících“
             if m.get("styl_puvodni"):
@@ -249,6 +254,25 @@ def umisti(osa, styl_nazev, obliceje):
             # nadpis uprostřed mezi horním bezpečným okrajem a temenem hlavy (Marcela 29. 10.: „moc nahoře“)
             _, vb = efekty.velikost_bloku(dict(m, velikost=m["velikost"]), st)
             m["y"] = max(HORNI_OKRAJ, int((HORNI_OKRAJ + okno[1]) / 2 - vb / 2))
+        if not ok and okno and "mini_nahore" in styl:
+            # nikdy přes obličej (Marcela 24. 11. 2026): nahoru nad hlavu jako nadpis, jeden řádek, za osobou (maska),
+            # zmenšit, dokud se nevejde do šířky; hlava smí zakrýt nejvýš spodek písmen
+            if m.get("styl") != "mini_nahore":
+                m["styl_puvodni"], m["text_puvodni"] = m.get("styl", "mini"), m["text"]
+                m["styl"] = "mini_nahore"
+            st = styl["mini_nahore"]
+            if not m.get("zpozdeni_radku"):
+                m["text"] = m["text"].replace("\n", " ")
+                if m.get("radky_styl"):
+                    m["radky_styl"] = m["radky_styl"][:1]
+            velikost = max(st["velikost"], m.get("velikost_zadana") or 0)
+            while True:
+                sb, vb = efekty.velikost_bloku(dict(m, velikost=velikost), st)
+                if sb <= SIRKA - 2 * BOK or velikost <= 40:
+                    break
+                velikost -= 4
+            m["y"], m["velikost"], m["za_hlavou"], m["nad_oblicejem"], m["vlasy_podil"] = HORNI_OKRAJ, velikost, True, True, 0.5
+            ok = True
         if not ok:
             m["y"], m["velikost"] = 700, st["velikost"]
             varovani.append("Mini nadpis '%s' se nevejde mimo obličej a titulky." % m["text"].replace("\n", " "))

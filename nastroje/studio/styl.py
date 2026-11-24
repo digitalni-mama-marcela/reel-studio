@@ -1,4 +1,4 @@
-"""Kód stylu z knihovny stylů Marcely („Vyber si svůj styl“, https://claude.ai/artifact/7waF2A4cLZ6AqDNKisjyzN)
+"""Kód stylu z knihovny stylů Marcely („Vyber si svůj styl“, od 20. 11. 2026 v pluginu: nastroje/knihovna, studio/knihovna.py)
 a obyčejné věty zákaznice, které styl reelu mění.
 
 Kód stylu je jedna věta, kterou stránka dává zákaznici ke zkopírování (verze 16, 3. 11. 2026):
@@ -397,7 +397,8 @@ def upravy_ze_stylu(s, zachovat_pismo=False):
         nastav("titulky", velikost=max(30, min(260, vel)))
         hlasky.append("Velikost titulků %d %% (%d px, výchozí vzhledu %d px)." % (s["velikost_titulku"], casti["titulky"]["velikost"], zakl))
     if s["poloha_nadpisu"] == "stred":
-        hlasky.append("⚠️ Nadpisy uprostřed videa studio zatím neumí (NEOVĚŘENO), dám je nahoru nad hlavu.")
+        nastav("hook", stred=True)
+        hlasky.append("Nadpis uprostřed videa, za tebou.")
     return {vzhled: casti}, hlasky
 
 
@@ -482,7 +483,9 @@ def pouzij_na_plan(radky, s, vety, obrazky=None):
         return hlasky
     povolene = s.get("prvky")
     if isinstance(povolene, list):
-        p = set(povolene) | PRVKY_VZDY
+        # nadpis je základ jako titulky (Marcela 23. 11. 2026: potvrzený nadpis nesmí z videa zmizet jen proto,
+        # že ve stylu není karta hooku; nadpisy z knihovny, třeba skládaný, ho nahradí v kroku plan)
+        p = set(povolene) | PRVKY_VZDY | {"hook"}
         for r in radky:
             if r["prvek"] in p:
                 continue

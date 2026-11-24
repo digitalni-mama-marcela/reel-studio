@@ -148,6 +148,20 @@ def pripravit(spec, styl, kontext):
     sirka = sum(sirky) + mezera * (n - 1)
     vyska = strana + int(st["mezera_popisku"]) + int(st["velikost_popisku"] * 1.4) + 16
     stred_y = int(spec["y"]) if spec.get("y") else int(VYSKA - DOLNI_OKRAJ - vyska / 2 - 40)
+    hlava = kontext.get("okno_hlavy") or kontext.get("okno")
+    if not spec.get("y") and hlava:
+        # knihovna stylů: ikony naskočí nad hlavou (Marcela 24. 11. 2026: za osobou na hrudi je schovalo tělo);
+        # nad hlavou místo není: jdou dopředu do spodní části, přes tělo, ne přes obličej
+        # okno obličeje je rozšířené: horních 28 % jsou vlasy, ty smí ikony (za osobou) překrýt jako nadpis
+        temeno = hlava[1] + 0.28 * (hlava[3] - hlava[1])
+        if temeno - 20 - vyska >= HORNI_OKRAJ:
+            stred_y = int(temeno - 20 - vyska / 2)
+            spec.setdefault("za_hlavou", True)
+        else:
+            spec["za_hlavou"], spec["skryt_titulky"] = False, True
+    elif not spec.get("y"):
+        spec.setdefault("za_hlavou", False)       # bez známé hlavy dole vepředu (za osobou by je schovalo tělo)
+        spec.setdefault("skryt_titulky", True)
     if spec.get("y"):
         # zadaná poloha platí i ve spodním pásmu (Marcela 22. 10.: ikony níž na klávesnici), jen uvnitř obrazu
         y = max(HORNI_OKRAJ, min(VYSKA - vyska - 20, int(stred_y - vyska / 2)))
@@ -164,7 +178,8 @@ def pripravit(spec, styl, kontext):
     rel, _ = casy(spec)
     spec["casy_naskoceni"] = [round(float(spec["od"]) + r, 2) for r in rel]
     okno = kontext.get("okno")
-    if okno and not (y + vyska < okno[1] or y > okno[3]):
+    horni_hranice = (okno[1] + 0.28 * (okno[3] - okno[1])) if okno and spec.get("za_hlavou") else (okno[1] if okno else 0)
+    if okno and not (y + vyska < horni_hranice or y > okno[3]):
         spec["varovani"] = "Ikony v čase %.1f s leží přes obličej, posuň je (y)." % float(spec["od"])
     return None
 

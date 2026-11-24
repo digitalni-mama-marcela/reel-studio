@@ -33,7 +33,7 @@ ZASTUPNY_NAHLED = (b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 160
 # prvky, které jde na stránce vybrat (ostatní zůstanou, jak jsou, mění je Claude podle slov zákaznice)
 JEDNODUCHE = ["mini", "karty_slov", "velke_slovo", "vlozka", "karticky", "vyzva", "zoom"]
 TEXTOVE = ["mini", "karty_slov", "hook", "velke_slovo", "vyzva", "wow", "nalepky", "stitky", "zapisnik", "zprava"]
-ODKAZ_STYLY = "https://claude.ai/artifact/7waF2A4cLZ6AqDNKisjyzN"
+ODKAZ_STYLY = ""   # knihovna je od 20. 11. 2026 v pluginu (studio/knihovna.py), otevírá ji Claude
 
 
 def otisk_souboru(p):

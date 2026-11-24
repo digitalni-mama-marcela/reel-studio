@@ -106,6 +106,9 @@ def delka_vstupu(spec):
     konec = max(VSTUP_S, max(zp) + RADEK_S)
     for _, od, n in casy_psani(spec):
         konec = max(konec, od + n * PISMENO_S)
+    for r in spec.get("radky_styl") or []:
+        if r.get("slova_od"):
+            konec = max(konec, max(r["slova_od"]) + RADEK_S)
     if spec.get("zvyraznit"):
         konec = max(konec, spec.get("marker_od", 0.0) + spec.get("marker_delka", 0.45))
     return konec
@@ -172,9 +175,20 @@ def _kresli_blok(spec, styl, t_rel, velikost=None):
         y_radku += vr
         # slovo po slovu kvůli zvýraznění
         casti = r.split(" ")
+        slova_od = rs_bloku[i].get("slova_od") if i < len(rs_bloku) else None
         cx = x
+        n_slov = 0
         for c in casti:
             cw = font.getlength(c)
+            if slova_od and c.strip("·•|–-"):
+                # slova naskakují postupně, když zazní (Marcela 24. 11. 2026: Captions, CapCut, Canva), řádek stojí
+                # na místě podle celé délky; oddělovač (·) se ukáže se slovem za ním
+                od_s = slova_od[min(n_slov, len(slova_od) - 1)]
+                n_slov += 1
+                if t_rel < od_s:
+                    break
+            elif slova_od and n_slov < len(slova_od) and t_rel < slova_od[n_slov]:
+                break
             jeZv = any(z.lower().strip(".,!?") in c.lower().strip(".,!?") for z in zvr) if zvr else False
             if jeZv:
                 sirka_pruhu = (cw + 20) * prog

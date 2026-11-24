@@ -559,8 +559,7 @@ function vykresliVzhled() {
   const vz = DATA.vzhled || {};
   el.append(h('div', { class: 'panel' }, h('h2', { text: 'Vzhled tohohle reelu' }),
     h('div', { text: vz.vzhled ? 'Vzhled: ' + vz.vzhled + (vz.titulky_z ? ', titulky ze vzhledu ' + vz.titulky_z : '') + (vz.zoom ? ', s přiblížením' : '') : 'Vzhled zatím není vybraný.' }),
-    h('div', { class: 'napoveda', text: 'Vzhled a titulky si vybereš v knihovně stylů. Kód stylu pak napiš Claudovi. Úpravy přímo tady přijdou v další verzi.' }),
-    h('a', { href: DATA.odkaz_styly, target: '_blank', rel: 'noopener', text: 'Otevřít knihovnu stylů' })));
+    h('div', { class: 'napoveda', text: 'Vzhled a titulky si vybereš v knihovně stylů. Napiš Claudovi „otevři knihovnu stylů“, otevře ti ji a výběr si po uložení převezme sám.' })));
 }
 function vykresliZvuk() {
   const el = document.getElementById('z-zvuk'); el.innerHTML = '';

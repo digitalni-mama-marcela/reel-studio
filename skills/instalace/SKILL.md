@@ -12,6 +12,24 @@ Zákaznice nic neinstaluje sama. Studio si všechno, co potřebuje, stáhne samo
 (Mac: `~/Library/Application Support/ClaudeReelStudio`, Windows: `%USERPROFILE%\.claude-reel-studio`).
 Nechce to heslo, práva správce, Homebrew ani winget a nic se neinstaluje do systému.
 
+## Čekání vždy předem (platí pro celou instalaci i střih)
+Zákaznice nesmí mít pocit, že se nic neděje. Před každým krokem, který trvá déle než minutu, jí řekni jednou krátkou
+větou, co se děje, kolik to stahuje a jak dlouho to asi bude. U delšího čekání ji pusť od počítače:
+„Teď se stahují nástroje pro střih, asi 300 MB. Trvá to pár minut, klidně si udělej kafe.“
+Pak krok proveď bez dalších otázek.
+
+| Krok | Kolik a jak dlouho (podle internetu a počítače) |
+|---|---|
+| první nástroje (kontrola počítače, poprvé) | asi 40 MB, asi minuta |
+| knihovny studia a ffmpeg (příprava) | asi 300 MB (Windows 360 MB), pár minut |
+| model přepisu řeči | asi 1,6 GB, stahuje se na pozadí, nečeká se |
+| přepis | asi polovina délky videa |
+| náhled a hotový reel | asi minuta na minutu reelu |
+
+Když spouštěč nebo krok napíše, že se stahování nedokončilo a zkouší to znovu (anglicky `STATUS …: the download did
+not finish, trying again (attempt 2 of 3)`, česky „⏳ Stahování se nedokončilo, zkouším znovu“), řekni jí:
+„Stahování se zaseklo, zkouším to znovu sama (2. pokus ze 3). Nic nemusíš dělat.“ Teprve když skončí 🔴, řeš chybu.
+
 ## 0. Který počítač (nejdřív, jednou)
 Zjisti systém z prostředí Claude Code (platforma darwin = Mac, win32 = Windows). Podle toho celou dobu používej
 jeden z těchto spouštěčů. Dál v dovednostech mu říkáme `STUDIO`:

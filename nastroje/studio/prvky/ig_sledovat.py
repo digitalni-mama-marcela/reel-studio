@@ -18,7 +18,12 @@ MODRA = (0, 149, 246)
 
 
 def pripravit(spec, styl, kontext):
-    spec["x"], spec["y"] = (SIRKA - W) // 2, int(spec.get("y") or 1110)
+    y = int(spec.get("y") or 1110)
+    okno = kontext.get("okno") if kontext else None
+    if not spec.get("y") and okno:
+        # pod bradu, když obličej sahá níž než 1110 (23. 11. 2026: karta nesmí zakrýt obličej), nejvýš nad spodní pásmo
+        y = min(max(y, int(okno[3]) + 30), kontext.get("vyska", 1920) - kontext.get("dolni", 450) - H + 60)
+    spec["x"], spec["y"] = (SIRKA - W) // 2, y
     spec["sirka"], spec["vyska"] = W, H
     spec.setdefault("za_hlavou", False)
 

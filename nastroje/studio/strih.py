@@ -476,9 +476,34 @@ def slij_kratke_mezery(casti, min_mezera=0.12):
     return vysl
 
 
-def sestav_osu(klipy, vyber, hook=None, vsuvky=None, vynechat=None):
+def _bez_rezu(casti, rezy):
+    """Části úseku (od, do) bez ručně zadaných úseků k vystřižení (přeřek, „mmm“, zdvojené slovo, které přepis
+    nevidí jako slovo). Části kratší než 0,04 s se zahodí."""
+    if not rezy:
+        return casti
+    out = []
+    for ca, cb in casti:
+        kusy = [(ca, cb)]
+        for ro, rd in sorted(rezy):
+            nove = []
+            for x, y in kusy:
+                if rd <= x or ro >= y:
+                    nove.append((x, y))
+                    continue
+                if ro > x:
+                    nove.append((x, ro))
+                if rd < y:
+                    nove.append((rd, y))
+            kusy = nove
+        out += [(x, y) for x, y in kusy if y - x >= 0.04]
+    return out
+
+
+def sestav_osu(klipy, vyber, hook=None, vsuvky=None, vynechat=None, rezy=None):
     """klipy: seznam slovníků {cesta, vety, en, delka, vypln (volitelně)}. vyber: seznam (číslo klipu, id věty) v pořadí ve videu.
     vynechat: {id věty: [pořadí slov]} slova, která se vystřihnou.
+    rezy: {číslo klipu od 0: [(od, do), ...]} úseky v čase originálu, které se vystřihnou ručně (Marcela 18. 11. 2026:
+    zdvojené „ať ať“, přeřek „bír“ před „B-roll“, „mmm“ v pauze). Slovo, které v takovém úseku začíná, začne až za ním.
 
     Vrátí časovou osu. Souvislé věty z jednoho klipu tvoří jeden úsek; dlouhé ticho uvnitř úseku se zkrátí
     (úsek se rozdělí na části, každá část je samostatný úsek osy).
@@ -504,7 +529,10 @@ def sestav_osu(klipy, vyber, hook=None, vsuvky=None, vynechat=None):
                 ids.append(k["vety"][i]["id"])
         cele = all(j == 0 and kk == len(k["vety"][i]["slova"]) for _, i, j, kk in g)
         veta_slova = [(k["vety"][i]["id"], w) for _, i, j, kk in g for w in k["vety"][i]["slova"][j:kk]]
-        casti = slij_kratke_mezery(rozdel_na_ticha(k["en"], vst, vyst, [w for _, w in veta_slova]))
+        casti = _bez_rezu(slij_kratke_mezery(rozdel_na_ticha(k["en"], vst, vyst, [w for _, w in veta_slova])), (rezy or {}).get(c))
+        for ro, rd in (rezy or {}).get(c, []):
+            veta_slova = [(vid, dict(w, start=rd) if ro <= w["start"] < rd and w["end"] > rd else w)
+                          for vid, w in veta_slova if not (ro <= w["start"] and w["end"] <= rd)]
         for n, (ca, cb) in enumerate(casti):
             d = delka_na_snimky(cb - ca, ca, k["en"])
             u = {"klip": c, "od": round(ca, 3), "do": round(ca + d, 3), "vystup_od": round(vystup_od, 3),
@@ -520,7 +548,8 @@ def sestav_osu(klipy, vyber, hook=None, vsuvky=None, vynechat=None):
     return {"verze": 1, "fps": FPS, "sirka": 1080, "vyska": 1920,
             "klipy": [k["cesta"] for k in klipy], "useky": useky, "slova": slova,
             "delka": round(vystup_od, 3), "hook": hook, "vsuvky": vsuvky or [],
-            "vyber": [[c, vid] for c, vid in vyber], "vynechat": {k: sorted(v) for k, v in (vynechat or {}).items() if v}}
+            "vyber": [[c, vid] for c, vid in vyber], "vynechat": {k: sorted(v) for k, v in (vynechat or {}).items() if v},
+            "rezy": {str(c): [list(r) for r in v] for c, v in (rezy or {}).items() if v}}
 
 
 def osa_cela(klipy, vyber=None):

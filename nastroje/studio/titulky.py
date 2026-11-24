@@ -379,7 +379,11 @@ def upravy_pisma(vzhled, nadpis=None, titulky=None):
 
 
 def zobraz(w, styl):
-    """Text slova na obrazovce: bez interpunkce na okrajích (kromě ? a !), velikost podle stylu."""
+    """Text slova na obrazovce: bez interpunkce na okrajích (kromě ? a !), velikost podle stylu.
+    w = text, nebo slovo z časové osy; slovo s "jmeno" (velké písmeno uprostřed věty) si velké písmeno nechá."""
+    jmeno = isinstance(w, dict) and w.get("jmeno")
+    if isinstance(w, dict):
+        w = w["w"]
     t = re.sub(r"^[\"„“”'(\[]+|[\"„“”')\]]+$", "", w.strip())
     t = re.sub(r"[.,;:…]+$", "", t)
     t = re.sub(r"(?<=\d)-(?=\d)", "–", t)
@@ -387,7 +391,7 @@ def zobraz(w, styl):
         return t.upper()
     if styl.get("puvodni_pismena"):      # jak zaznělo v přepisu (Claude, CapCutu), vzhled jedno_slovo
         return t
-    return t if re.match(r"^[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]{2,}", t) else t.lower()
+    return t if (jmeno or re.match(r"^[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]{2,}", t)) else t.lower()
 
 
 def rozdel(sirky, mezera, max_sirka):
@@ -486,7 +490,7 @@ def vykresli_titulky(slova_strany, k_zni, styl, stred=None):
                     velikost=int(styl["velikost"] * k.get("pomer", 1.3)), max_sirka=int(styl["max_sirka"] * k.get("pomer", 1.3)),
                     stin=k.get("stin", styl.get("stin")))
     font = pismo(styl["pismo"], styl["velikost"], styl["varianta"])
-    texty = [zobraz(w["w"] if isinstance(w, dict) else w, styl) for w in slova_strany]
+    texty = [zobraz(w, styl) for w in slova_strany]
     radky, sirky, mezera, sb, vb, vr = blok_textu(texty, font, styl, styl["max_sirka"])
     pad = 40
     plocha = (int(sb) + 2 * pad, int(vb) + 2 * pad)
@@ -552,7 +556,7 @@ def vykresli_casomiru(spec, styl, snimek):
             d.text((x, 4), z, font=font, fill=f)
             x += font.getlength(z)
     from . import prvky
-    ob = prvky.modul(spec["typ"]).obdelnik(spec, {})
+    ob = prvky.modul(spec["typ"]).obdelnik(spec, {}) if spec.get("typ") else None
     x = int((SIRKA - w) / 2) if styl.get("zarovnani") == "stred" else int(SIRKA * 0.20)
     y = int(min(VYSKA - DOLNI_OKRAJ - h, (ob[3] if ob else VYSKA * 0.45) + styl.get("mezera", 36)))
     if spec.get("casomira_y"):
@@ -637,7 +641,7 @@ def vypln_stranky(slova, styl):
     stranky, aktualni = [], []
 
     def vejde(sl):
-        sirky = [font.getlength(zobraz(w["w"], styl)) for w in sl]
+        sirky = [font.getlength(zobraz(w, styl)) for w in sl]
         return len(rozdel(sirky, mezera, styl["max_sirka"])) <= styl["radku"]
 
     for i, w in enumerate(slova):
@@ -725,6 +729,8 @@ class Kreslic:
             klic.append(("e", -1, efekty.krok(h, t - h["od"], h["do"] - t)))
         elif nadpis:
             klic.append(("h", round(self.alfa(t, h["od"], h["do"]) * 6)))
+        if nadpis and h.get("casomira"):
+            klic.append(("c", -1, int(round((t - h["od"]) * FPS))))
         for j, pv in enumerate(self.osa.get("prvky", [])):
             if pv["od"] <= t < pv["do"]:
                 from . import prvky
@@ -767,7 +773,14 @@ class Kreslic:
         elif polozka[0] == "h":
             r = vykresli_hook(self.osa["hook"], self.styl["hook"], polozka[1] / 6)
         elif polozka[0] == "c":
-            r = vykresli_casomiru(self.osa["prvky"][polozka[1]], self.styl.get("casomira", {}), polozka[2])
+            if polozka[1] == -1:
+                # tikající čas pod kartou hooku (bez typu prvku): poloha pod spodním okrajem nadpisu
+                h = self.osa["hook"]
+                _, vb, _ = velikost_hooku(h.get("text_puvodni") or h["text"], self.styl["hook"], h.get("velikost") or self.styl["hook"]["velikost"])
+                spec_c = {"casomira_y": int((h.get("y") or HORNI_OKRAJ) + vb + self.styl.get("casomira", {}).get("mezera", 36))}
+            else:
+                spec_c = self.osa["prvky"][polozka[1]]
+            r = vykresli_casomiru(spec_c, self.styl.get("casomira", {}), polozka[2])
         else:
             r = vykresli_vsuvku(self.osa["vsuvky"][polozka[1]], self.styl["vsuvka"], polozka[2] / 6)
         self._obr[polozka] = r

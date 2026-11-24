@@ -72,6 +72,7 @@ def priprav_vsechny(osa, styl, obliceje, podklady=None):
                     spec["za_hlavou"] = False
             else:
                 # prvek jde za osobu (maska): umisťuje se bez ohledu na obličej, hlava smí zakrývat spodek písmen
+                kontext["okno_hlavy"] = okno          # kde je hlava (ikony jdou nad ni, za tělem by nebyly vidět)
                 kontext["okno"] = None
                 spec["pres_oblicej"] = True
         modul(spec["typ"]).pripravit(spec, st, kontext)
