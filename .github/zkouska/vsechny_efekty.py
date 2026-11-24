@@ -65,8 +65,11 @@ def ve_videu(k, osa):
         return bool(osa.get("vsuvky"))
     if k == "hook":
         return bool(osa.get("hook")) or bool(typy & {"karty_slov", "skladany_nadpis", "hravy_nadpis"})
-    if k in ("broll", "jen-hlas"):
-        return len(osa.get("prekryvy") or []) >= 2
+    if k == "broll":      # krátké zkušební video (3 věty): první věta zůstává s tváří, záběr se vejde jeden
+        return len(osa.get("prekryvy") or []) >= 1
+    if k == "jen-hlas":   # celý reel ze záběrů, bez mezery
+        pk = osa.get("prekryvy") or []
+        return len(pk) >= 2 and pk[0]["od"] == 0 and abs(pk[-1]["do"] - osa["delka"]) < 0.05
     if k == "velke_slovo":
         return any(m.get("styl") == "slovo_velke" for m in osa.get("mini", []))
     if k == "casomira":
