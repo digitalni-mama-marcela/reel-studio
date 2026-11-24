@@ -72,9 +72,11 @@ KARTY = {
         P("veta", "u které věty střihneš nůžkami (číslo věty nebo kus věty)", "veta")]},
     "papir_otazka": {"typ": "papirova_karta", "kde": "veta", "pevne": {"druh": "otazka", "konec": "odfouknuti"}, "pole": [
         P("text", "text otázky na nálepce", "text"),
+        P("jmeno", PROFIL_POLE["jmeno"], "profil"), P("fotka", PROFIL_POLE["fotka"], "profil", povinne=False),
         P("veta", "u které věty foukneš fénem nebo mávneš (číslo věty nebo kus věty)", "veta")]},
     "papir_komentare": {"typ": "papirova_karta", "kde": "veta", "pevne": {"druh": "komentar", "konec": "dopad"}, "pole": [
-        P("texty", "1 až 3 krátké komentáře, oddělené |", "radky"), VETA]},
+        P("texty", "1 až 3 krátké komentáře, oddělené |", "radky"),
+        P("jmeno", PROFIL_POLE["jmeno"], "profil"), P("fotka", PROFIL_POLE["fotka"], "profil", povinne=False), VETA]},
     # --- texty
     "rucni_poznamka": {"typ": "rucni_poznamka", "kde": "veta", "pole": [
         P("text", "poznámku na 1 až 2 krátké řádky (druhý řádek odděl |)", "radky"), VETA]},
@@ -122,7 +124,20 @@ DRIVE = {
     "mrizka": [P("obrazky", "5 až 9 obálek reelů (9:16) do složky PODKLADY-SEM", "pocet", min=5)],
     "orbit": [P("obrazky", "4 až 8 obálek reelů (9:16) do složky PODKLADY-SEM", "pocet", min=4)],
     "zed": [P("obrazky", "4 až 12 obálek reelů do složky PODKLADY-SEM", "pocet", min=4)],
+    # Marcela 24. 11. 2026: i tyhle karty plán dřív jen „smí navrhnout“ a když je nenavrhl, potichu vypadly
+    "zapisnik": [P("polozky", "1 až 6 krátkých bodů do zápisníku, oddělené | (každý se odškrtne, když ho v reelu řekneš, "
+                              "tak je piš svými slovy z videa)", "radky"),
+                 P("nadpis", "nadpis zápisníku (nepovinné, třeba „Co potřebuješ“)", "text", povinne=False), VETA],
+    "karty_slov": [P("slova", "úvodní větu rozdělenou na 2 až 4 kousky, oddělené | (výchozí: tvoje první věta)", "radky",
+                     povinne=False, vychozi="hook")],
+    "velke_slovo": [P("slovo", "jedno slovo, které v reelu řekneš a má vyskočit přes celou obrazovku", "slovo")],
+    "nalepky": [P("slova", "1 až 3 slova, která v reelu řekneš a na obrazovce se přeškrtnou (oddělené čárkou)", "text"), VETA],
+    "zprava": [P("text", "zprávu pro Clauda, jak ji v reelu píšeš nebo říkáš (1 až 2 krátké věty)", "text"), VETA],
+    "vsuvka": [P("text", "slovo nebo dvě z věty, které mají naskočit na kartičce (barevná část mezi hvězdičkami, třeba *10* minut)", "text"), VETA],
+    "casomira": [],      # tikající čas pod nadpisem: nic dodávat nemusí
 }
+# karty z DRIVE, které dostanou řádek plánu s obsahem z podkladů (karty_slov je nadpis, casomira jen příznak u nadpisu)
+DRIVE_TEXTOVE = ("zapisnik", "velke_slovo", "nalepky", "zprava", "vsuvka")
 NADPISY = {k for k, d in KARTY.items() if d["kde"] == "hook"}
 
 
@@ -435,7 +450,12 @@ def _pridej_drive(reel, radky, styl_reelu, vety, data, hlasky):
     když je zákaznice vybrala a v plánu nejsou, přidá je k vhodné větě."""
     obrazky = [p.name for p in soubory_podkladu(reel, OBRAZKY)]
     for karta in vybrane(styl_reelu):
-        if karta not in DRIVE or karta in data["vynechat"] or any(r["prvek"] == karta for r in radky):
+        if karta not in DRIVE or karta in data["vynechat"]:
+            continue
+        if karta in DRIVE_TEXTOVE or karta == "karty_slov":
+            _pridej_textovou(reel, radky, styl_reelu, vety, data, hlasky, karta)
+            continue
+        if karta == "casomira" or any(r["prvek"] == karta for r in radky):
             continue
         if karta == "vyzva":
             i, obsah = _veta_vyzvy(vety), None
@@ -464,6 +484,68 @@ def _pridej_drive(reel, radky, styl_reelu, vety, data, hlasky):
         radky.insert(poz, {"veta": v["id"], "text": v["text"], "text_vety": v["text"], "od": round(v["od"], 2), "do": round(v["do"], 2),
                            "prvek": karta, "obsah": obsah, "duvod": "efekt ze stylu, u věty %d" % (i + 1), "zdroj": "styl", "typ": "styl"})
         hlasky.append("Efekt %s jde k větě %d („%s“)." % (karta, i + 1, v["text"][:60]))
+
+
+KLICOVA_TEXTOVYCH = {"zapisnik": r"krok|tip|potřeb|seznam|za prvé|první|druh|třetí",
+                     "nalepky": r"nechci|nemusíš|bez |žádn|zapomeň|už ne",
+                     "zprava": r"claud|napíš|napsal|řekn|prompt|zadá|chat",
+                     "vsuvka": None}
+
+
+def _pridej_textovou(reel, radky, styl_reelu, vety, data, hlasky, karta):
+    """Karty, které potřebují text od zákaznice (zápisník, nálepky, zpráva, obří slovo, vsuvka, karty slov):
+    řádek plánu s obsahem z podkladů. Řádek, který navrhl plán sám, dostane slova zákaznice (ruční se nemění)."""
+    h = data["hodnoty"].get(karta) or {}
+    zadana = najdi_vetu(vety, h.get("veta")) if h.get("veta") else None
+    if karta == "karty_slov":
+        # nadpis z karet slov: jen když nadpis neurčuje jiná karta (skládaný, hravý)
+        if any(k in NADPISY for k in vybrane(styl_reelu) if k not in data["vynechat"]):
+            hlasky.append("⚠️ Vybrané jsou karty slov i jiný nadpis, karty slov vynechávám.")
+            return
+        v = vety[0]
+        slova = h.get("slova")
+        hook_radek = next((r for r in radky if r["veta"] == v["id"] and r["prvek"] in ("hook", "karty_slov", "zoom")), None)
+        if hook_radek and hook_radek["prvek"] == "karty_slov" and (hook_radek.get("zdroj") == "rucne" or not slova):
+            return
+        text = slova or (hook_radek.get("obsah", "") if hook_radek and hook_radek["prvek"] == "hook" else "") or v["text"]
+        obsah = text if "|" in text else " | ".join(re.split(r"[,.!?]", text)[0].split()[:4])
+        if hook_radek:
+            radky.remove(hook_radek)
+        radky.insert(0, {"veta": v["id"], "text": v["text"], "text_vety": v["text"], "od": round(v["od"], 2), "do": round(v["do"], 2),
+                         "prvek": "karty_slov", "obsah": obsah, "duvod": "nadpis ze stylu (karty slov)", "zdroj": "styl", "typ": "hook"})
+        hlasky.append("Nadpis jako karty slov: %s." % obsah)
+        return
+    if karta == "zapisnik":
+        polozky = _radky(h.get("polozky"))
+        obsah = ((h.get("nadpis").strip() + ": ") if h.get("nadpis") else "") + " | ".join(polozky) if polozky else ""
+        i = zadana if zadana is not None else najdi_vetu(vety, polozky[0]) if polozky else None
+    elif karta == "velke_slovo":
+        obsah = (h.get("slovo") or "").strip().strip(".,!?„“\"")
+        i = zadana if zadana is not None else (_veta_slova(vety, obsah) if obsah else None)
+        if obsah and i is None:
+            hlasky.append("⚠️ Obří slovo „%s“ v reelu nezazní. Zeptej se zákaznice na slovo, které opravdu řekne." % obsah)
+            return
+    else:
+        obsah = (h.get("slova") if karta == "nalepky" else h.get("text")) or ""
+        i = zadana if zadana is not None else (najdi_vetu(vety, obsah) if obsah and karta != "zprava" else None)
+    if not obsah:
+        return                          # chybí podklady: kontrola to zákaznici řekne, pojistka video nepustí
+    existujici = [r for r in radky if r["prvek"] == karta]
+    if existujici:
+        for r in existujici:
+            if r.get("zdroj") != "rucne":
+                r["obsah"] = obsah
+        return
+    if i is None:
+        i = misto_volne(vety, radky, KLICOVA_TEXTOVYCH.get(karta))
+    if i is None:
+        return
+    v = vety[i]
+    poz = max((j for j, r in enumerate(radky) if r["veta"] == v["id"]), default=len(radky) - 1) + 1
+    radky.insert(poz, {"veta": v["id"], "text": v["text"], "text_vety": v["text"], "od": round(v["od"], 2), "do": round(v["do"], 2),
+                       "prvek": karta, "obsah": obsah, "duvod": "efekt ze stylu, u věty %d" % (i + 1), "zdroj": "styl", "typ": "styl"})
+    hlasky.append("Efekt %s jde k větě %d („%s“)." % (karta, i + 1, v["text"][:60]))
+
 
 
 def misto_volne(vety, radky, klicova=None):
@@ -690,12 +772,14 @@ def _sestav_spec(reel, karta, rad, od_v, do_v, kontext):
         if not h("text"):
             return None, "chybí text otázky"
         spec["text"] = h("text")
+        spec.update({"jmeno": h("jmeno") or "", "foto": h("fotka") or ""})
         return spec, None
     if karta == "papir_komentare":
         texty = _radky(h("texty"))[:3]
         if not texty:
             return None, "chybí komentáře"
-        spec.update({"texty": texty, "casy": [round(spec["od"] + 0.4 * j, 2) for j in range(len(texty))]})
+        spec.update({"texty": texty, "casy": [round(spec["od"] + 0.4 * j, 2) for j in range(len(texty))],
+                     "jmeno": h("jmeno") or "", "foto": h("fotka") or ""})
         spec["do"] = round(min(delka, max(spec["do"], od_v + 1.0 + 0.4 * len(texty) + 1.5)), 2)
         return spec, None
     if karta == "rucni_poznamka":
@@ -827,7 +911,8 @@ def typy_karty(karta):
     if karta in KARTY:
         return {KARTY[karta]["typ"]}
     return {"vyzva": {"vyzva"}, "vlozka": {"vlozka"}, "karticky": {"karticky"}, "mrizka": {"mrizka"},
-            "orbit": {"orbit"}, "zed": {"zed"}}.get(karta, set())
+            "orbit": {"orbit"}, "zed": {"zed"}, "zapisnik": {"zapisnik"}, "nalepky": {"nalepky"}, "zprava": {"zprava"},
+            "karty_slov": {"karty_slov"}}.get(karta, set())
 
 
 def chybejici_ve_videu(styl_reelu, osa, data):
@@ -841,6 +926,18 @@ def chybejici_ve_videu(styl_reelu, osa, data):
             # karta výzvy je v osa["mini"] (mini_silny s „vyzva“), výzvu umí nést i komentář na IG nebo sprej
             if not any(m.get("vyzva") or m.get("styl") == "mini_silny" for m in osa.get("mini", [])) \
                     and not ({"ig_komentar", "sprej"} & typy):
+                out.append(karta)
+            continue
+        if karta == "velke_slovo":
+            if not any(m.get("styl") == "slovo_velke" for m in osa.get("mini", [])):
+                out.append(karta)
+            continue
+        if karta == "vsuvka":
+            if not osa.get("vsuvky"):
+                out.append(karta)
+            continue
+        if karta == "casomira":
+            if not ((osa.get("hook") or {}).get("casomira") or any(x.get("casomira") for x in osa.get("prvky", []))):
                 out.append(karta)
             continue
         t = typy_karty(karta)

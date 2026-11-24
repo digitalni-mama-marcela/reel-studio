@@ -454,6 +454,7 @@ def krok_vzhled(a):
     s = projekt.slozky(r)
     nast = projekt.nastaveni(r)
     k = Krok("Vzhled", s["pracovni"])
+    plan_vsuvky = []                  # vsuvky z plánu (efekt Vsuvka z knihovny stylů)
     osa_soubor = s["pracovni"] / "casova-osa.json"
     if not osa_soubor.exists():
         k.cervena("ještě není náhled.", "nejdřív udělej náhled (STUDIO nahled --reel \"%s\")." % r)
@@ -541,9 +542,8 @@ def krok_vzhled(a):
         # plán mohl vzniknout před výběrem stylu: efekty ze stylu, které v něm chybí, se doplní (nic se nepřepisuje)
         vety_planu = [{"id": vid_, "text": vety_text.get(vid_, ""), "od": veta_slova[vid_][0]["start"], "do": veta_slova[vid_][-1]["end"]}
                       for vid_ in dict.fromkeys(v_ for u in osa["useky"] for v_ in u.get("vety", [])) if vid_ in veta_slova]
-        if not any(rr["prvek"] in _zadani.NADPISY for rr in plan["radky"]):
-            for zprava in _zadani.pridej_do_planu(r, plan["radky"], styl_reelu, vety_planu):
-                k.info("Plán byl starší než styl, doplňuji: " + zprava)
+        for zprava in _zadani.pridej_do_planu(r, plan["radky"], styl_reelu, vety_planu):
+            k.info("Plán byl starší než styl, doplňuji: " + zprava)
         prvni_veta = next((rr["veta"] for rr in plan["radky"] if rr["veta"] in veta_slova), None)
         hook_radky = [rr for rr in plan["radky"] if rr["veta"] == prvni_veta and (rr["prvek"] in ("hook", "karty_slov") or rr["prvek"] in _zadani.NADPISY)]
         if a.bez_hooku:
@@ -552,7 +552,10 @@ def krok_vzhled(a):
             hook_radky = []
         elif a.hook:
             # text nadpisu potvrzený zákaznicí (krok 7c) má přednost před návrhem plánu
+            slova_karet = (_zadani.nacti(r)["hodnoty"].get("karty_slov") or {}).get("slova")
             for rr in hook_radky:
+                if rr["prvek"] == "karty_slov" and slova_karet:
+                    continue            # karty slov rozdělené zákaznicí (krok podklady) se nepřepisují
                 rr["obsah"] = " | ".join(a.hook.split()) if rr["prvek"] == "karty_slov" else a.hook
             if not hook_radky and prvni_veta:
                 hr = {"veta": prvni_veta, "prvek": "hook", "obsah": a.hook, "duvod": "nadpis zákaznice"}
@@ -670,6 +673,8 @@ def krok_vzhled(a):
                                     "efekt": "pop", "od": round(od_v, 2), "do": round(min(osa["delka"], do_v + 1.2), 2), "veta": vid,
                                     "velikost": titulky.STYLY[styl].get("mini_silny", {}).get("velikost", 62), "y": 0, "skryt_titulky": True,
                                     "vyzva": True, "zvyraznit": [slovo] if slovo else [], "marker_od": 0.5})
+            elif prvek == "vsuvka" and obsah:
+                plan_vsuvky.append("%s@%s" % (obsah, vid))
             elif prvek == "zprava" and "zprava" in dostupne:
                 osa["prvky"].append({"typ": "zprava", "od": round(od_v, 2), "do": round(max(do_v + 0.8, od_v + 3.5), 2), "text": obsah, "komu": "PRO CLAUDA"})
             elif prvek == "vlozka" and "vlozka" in dostupne and obsah:
@@ -868,6 +873,17 @@ def krok_vzhled(a):
                 for m in vyzvy:
                     m["do"] = round(max(m["od"] + 1.0, min(m["do"], start - 0.1)), 2)
                 sl["od"], sl["do"] = round(max(sl["od"], start), 2), round(osa["delka"], 2)
+        if "casomira" in (styl_reelu.get("prvky") or []) and "casomira" not in _zadani.nacti(r)["vynechat"]:
+            # tikající čas pod nadpisem (knihovna: „Tikající čas pod hookem“), u karty hooku i u nadpisových efektů
+            nadpis_c = next((x for x in osa["prvky"] if x["typ"] in ("karty_slov", "skladany_nadpis", "hravy_nadpis")), None)
+            if nadpis_c is not None:
+                nadpis_c["casomira"] = True
+            elif osa.get("hook"):
+                osa["hook"]["casomira"] = True
+        if osa.get("hook") and any(x["typ"] == "vypinac_plakat" and x.get("vypinac") and x["od"] < 1.0 for x in osa["prvky"]):
+            # úvod se zdí a vypínačem: plakát je nadpis, karta nadpisu by se s vypínačem překryla
+            osa["hook"] = None
+            k.info("Úvod je vypínač s plakátem: plakát je nadpis, kartu nadpisu nedávám.")
         karty_hook = [x for x in osa["prvky"] if x["typ"] == "karty_slov"]
         hook_text = osa["hook"]["text"] if osa.get("hook") else (" | ".join(karty_hook[0]["karty"]) if karty_hook else "")
         nadpis_efekt = next((x for x in osa["prvky"] if x["typ"] in ("skladany_nadpis", "hravy_nadpis")), None)
@@ -877,7 +893,7 @@ def krok_vzhled(a):
             osa["filtr_od"] = round(veta_slova[plan["filtr_od_vety"]][0]["start"], 2)
             k.info("Barevný filtr od věty %s (%.1f s)." % (plan["filtr_od_vety"], osa["filtr_od"]))
     osa["vsuvky"] = []
-    for vs in (a.vsuvka or []) + ulozeno.get("vsuvky", []):
+    for vs in (a.vsuvka or []) + ulozeno.get("vsuvky", []) + plan_vsuvky:
         text, _, vid = vs.rpartition("@")
         if not text or vid not in veta_slova:
             k.cervena("vsuvka '%s' nemá tvar text@číslo-věty, nebo věta není v reelu." % vs, "zapiš třeba --vsuvka \"SPF *30*@k1-v05\".")
@@ -962,7 +978,8 @@ def krok_vzhled(a):
                            for x in _zadani.chybejici_ve_videu(styl_reelu, osa, _zadani.nacti(r))
                            if not any(n_.startswith(_styl.PRVKY_TEXT.get(x, x)) for n_ in nesestavene)]
     nadpisove = {"karty_slov", "skladany_nadpis", "hravy_nadpis"}
-    if not a.bez_hooku and not osa.get("hook") and not any(x["typ"] in nadpisove for x in osa.get("prvky", [])):
+    if not a.bez_hooku and not osa.get("hook") and not any(x["typ"] in nadpisove or (x["typ"] == "vypinac_plakat" and x.get("vypinac"))
+                                                          for x in osa.get("prvky", [])):
         chybi_ve_videu.append("nadpis: ve videu žádný není")
     if chybi_ve_videu:
         k.cervena("video jsem nestavěla, chybělo by v něm, co si zákaznice vybrala: " + "; ".join(chybi_ve_videu) + ".",

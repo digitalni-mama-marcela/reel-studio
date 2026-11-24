@@ -145,6 +145,11 @@ def umisti(osa, styl_nazev, obliceje):
                 if okno:
                     mista.append(int(okno[1]) - MEZERA - vb)
                 # nadpis je nadpis: nahoře, pod bradou nebo nad obličejem, nikdy dole jako titulek (Marcela 18. 10.)
+                if styl["hook"].get("stred"):
+                    # knihovna stylů „Nadpisy uprostřed videa“ (za tebou, když stojíš dál): střed obrazu, za osobou
+                    y = int(VYSKA * 0.42 - vb / 2)
+                    h["y"], h["velikost"], h["za_hlavou"], ok = y, velikost, True, True
+                    break
                 for y in mista:
                     if y < HORNI_OKRAJ:
                         continue

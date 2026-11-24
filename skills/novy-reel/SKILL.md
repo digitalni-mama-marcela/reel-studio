@@ -123,6 +123,10 @@ not finish, trying again (attempt 2 of 3)`, česky „⏳ Stahování se nedokon
    fotka) se ukládá pro všechny reely, příště se na něj neptej. Co nechce: `--vynechat <efekt>`. U kterého místa
    efekt má být, si studio vybere samo; když ho chce jinde: `--nastav "<efekt>.veta=5"` (číslo věty nebo kus věty).
    Pokračuj, až podklady skončí zeleně (✅).
+   Studio umí do videa dát KAŽDÝ efekt z knihovny (všech 38, ověřeno renderem 24. 11. 2026). Nikdy jí neříkej,
+   že efekt „tahle verze neumí“, a nenahrazuj ho jiným: když něco chybí, je to vždycky podklad, tak si o něj řekni.
+   Kdyby výstup kroku styl oddíl PODKLADY vůbec neměl, má zákaznice starou verzi studia: řekni jí, ať Claude
+   úplně ukončí (na Macu Cmd+Q, ne jen zavřít okno), znovu otevře a začne nový chat.
 7c. **Text nadpisu.** Písmo, barvu a polohu nadpisu má z výběru. Zeptej se jen na text: „Nadpis navrhuju „…“
    (z tvých slov, nejvýš 10 slov). Beru, nebo napiš svůj?“ Její text dej VŽDY do kroku 9 jako `--hook "<text>"`,
    i s `--plan` (má přednost před plánem; platí i pro skládaný a hravý nadpis). Nadpis je v reelu vždycky, i když

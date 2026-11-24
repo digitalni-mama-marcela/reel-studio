@@ -552,7 +552,7 @@ def vykresli_casomiru(spec, styl, snimek):
             d.text((x, 4), z, font=font, fill=f)
             x += font.getlength(z)
     from . import prvky
-    ob = prvky.modul(spec["typ"]).obdelnik(spec, {})
+    ob = prvky.modul(spec["typ"]).obdelnik(spec, {}) if spec.get("typ") else None
     x = int((SIRKA - w) / 2) if styl.get("zarovnani") == "stred" else int(SIRKA * 0.20)
     y = int(min(VYSKA - DOLNI_OKRAJ - h, (ob[3] if ob else VYSKA * 0.45) + styl.get("mezera", 36)))
     if spec.get("casomira_y"):
@@ -725,6 +725,8 @@ class Kreslic:
             klic.append(("e", -1, efekty.krok(h, t - h["od"], h["do"] - t)))
         elif nadpis:
             klic.append(("h", round(self.alfa(t, h["od"], h["do"]) * 6)))
+        if nadpis and h.get("casomira"):
+            klic.append(("c", -1, int(round((t - h["od"]) * FPS))))
         for j, pv in enumerate(self.osa.get("prvky", [])):
             if pv["od"] <= t < pv["do"]:
                 from . import prvky
@@ -767,7 +769,14 @@ class Kreslic:
         elif polozka[0] == "h":
             r = vykresli_hook(self.osa["hook"], self.styl["hook"], polozka[1] / 6)
         elif polozka[0] == "c":
-            r = vykresli_casomiru(self.osa["prvky"][polozka[1]], self.styl.get("casomira", {}), polozka[2])
+            if polozka[1] == -1:
+                # tikající čas pod kartou hooku (bez typu prvku): poloha pod spodním okrajem nadpisu
+                h = self.osa["hook"]
+                _, vb, _ = velikost_hooku(h.get("text_puvodni") or h["text"], self.styl["hook"], h.get("velikost") or self.styl["hook"]["velikost"])
+                spec_c = {"casomira_y": int((h.get("y") or HORNI_OKRAJ) + vb + self.styl.get("casomira", {}).get("mezera", 36))}
+            else:
+                spec_c = self.osa["prvky"][polozka[1]]
+            r = vykresli_casomiru(spec_c, self.styl.get("casomira", {}), polozka[2])
         else:
             r = vykresli_vsuvku(self.osa["vsuvky"][polozka[1]], self.styl["vsuvka"], polozka[2] / 6)
         self._obr[polozka] = r

@@ -397,7 +397,8 @@ def upravy_ze_stylu(s, zachovat_pismo=False):
         nastav("titulky", velikost=max(30, min(260, vel)))
         hlasky.append("Velikost titulků %d %% (%d px, výchozí vzhledu %d px)." % (s["velikost_titulku"], casti["titulky"]["velikost"], zakl))
     if s["poloha_nadpisu"] == "stred":
-        hlasky.append("⚠️ Nadpisy uprostřed videa studio zatím neumí (NEOVĚŘENO), dám je nahoru nad hlavu.")
+        nastav("hook", stred=True)
+        hlasky.append("Nadpis uprostřed videa, za tebou.")
     return {vzhled: casti}, hlasky
 
 
