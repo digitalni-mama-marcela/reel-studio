@@ -948,6 +948,46 @@ def krok_vzhled(a):
             return k.kod()
         od = veta_slova[vid][0]["start"]
         osa["vsuvky"].append({"text": text, "od": round(od, 2), "do": round(min(od + 2.4, veta_slova[vid][-1]["end"] + 0.6), 2)})
+    # b-roll pod hlasem (prekryvy.py): záběry z PODKLADY-SEM/B-ROLL přes celý obraz, hlas běží dál
+    from . import prekryvy as _pk
+    osa["prekryvy"] = []
+    broll_prani = (a.broll or []) + ulozeno.get("broll", [])
+    jen_hlas = bool(a.jen_hlas or ulozeno.get("jen_hlas")) and not a.bez_brollu
+    if not a.bez_brollu:
+        podkl = _podklady_reelu(r, a)
+        zabery = [(pp, _pk.info(pp)) for pp in _pk.najdi(podkl)]
+        for pp, inf in zabery:
+            if not inf:
+                k.info("Záběr %s v B-ROLL nejde přečíst (nebo je kratší než 1 s), vynechávám ho." % pp.name)
+        zabery = [(pp, inf) for pp, inf in zabery if inf]
+        poradi_vet = list(dict.fromkeys(vid for u in osa["useky"] for vid in u.get("vety", []) if vid in veta_slova))
+        prirazeni = {}
+        for b in broll_prani:
+            jm, _, kde = b.rpartition("@")
+            soubor = next((pp for pp, _ in zabery if pp.name.lower() == jm.strip().lower()), None)
+            vid = kde.strip()
+            if vid.isdigit() and 0 < int(vid) <= len(poradi_vet):
+                vid = poradi_vet[int(vid) - 1]
+            if soubor is None or vid not in veta_slova:
+                k.cervena("b-roll '%s' neznám: záběr musí být ve složce PODKLADY-SEM/B-ROLL a věta v reelu." % b,
+                          "zapiš třeba --broll \"kavarna.mov@4\" (název souboru @ číslo věty).")
+                return k.kod()
+            prirazeni[vid] = soubor
+        if zabery:
+            vyhradit = {cta_veta} | {m.get("veta") for m in osa.get("mini", []) if m.get("vyzva")}
+            osa["prekryvy"] = _pk.naplanuj([(vid, veta_slova[vid]) for vid in poradi_vet], zabery, prirazeni,
+                                           jen_hlas, osa["delka"], vyhradit)
+            if osa["prekryvy"]:
+                k.info("B-roll pod hlasem: %d záběrů, celkem %.1f s%s (%s)." % (
+                    len(osa["prekryvy"]), sum(x["do"] - x["od"] for x in osa["prekryvy"]),
+                    ", celý reel jen hlas" if jen_hlas else "", ", ".join(
+                        "%s %.1f–%.1f s" % (Path(x["soubor"]).name, x["od"], x["do"]) for x in osa["prekryvy"])))
+            else:
+                k.info("Záběry v B-ROLL jsou, ale v reelu pro ně není volná věta (první věta a výzva zůstávají s tváří).")
+        elif jen_hlas:
+            k.cervena("režim jen hlas potřebuje záběry ve složce PODKLADY-SEM/B-ROLL.",
+                      "řekni zákaznici, ať do té složky dá aspoň dva záběry, a spusť vzhled znovu.")
+            return k.kod()
     # poloha obličeje v každém klipu (místní měření, s uložením)
     vzorky = []
     for kl in klipy:
@@ -1016,6 +1056,7 @@ def krok_vzhled(a):
         "vzhled": styl.split("+")[0], "titulky_z": titulky_z, "hook": {"text": hook_text, "zvyraznit": zvyraznit, "vypnuto": bool(a.bez_hooku)},
         "mini": [{kk: vv for kk, vv in m.items() if kk in ("text", "styl", "efekt", "veta", "od", "do")} for m in osa["mini"] if m.get("styl") != "mini_silny"],
         "vsuvky": (a.vsuvka or []) + ulozeno.get("vsuvky", []), "zoom": bool(pouzit_zoom), "vyzva": not a.bez_vyzvy,
+        "broll": list(dict.fromkeys(broll_prani)), "jen_hlas": jen_hlas,
         "upravy": ulozeno.get("upravy") or {}})
     # Pojistka (Marcela 23. 11. 2026): nic, co si zákaznice vybrala, nesmí z videa potichu vypadnout.
     from . import zadani as _zadani
@@ -1824,6 +1865,9 @@ def main(argv=None):
     vz.add_argument("--titulky", help="titulky z jiného vzhledu (třeba --vzhled vogue --titulky marcela)")
     vz.add_argument("--bez-masky", action="store_true", help="text vždy před osobu (bez masky osoby)")
     vz.add_argument("--podklady", help="složka s obrázky k vložkám a mřížce (výchozí PODKLADY-SEM reelu)")
+    vz.add_argument("--broll", action="append", help="záběr z PODKLADY-SEM/B-ROLL k větě: soubor@číslo-věty; lze víckrát (jinak studio rozmístí samo)")
+    vz.add_argument("--jen-hlas", dest="jen_hlas", action="store_true", help="celý reel ze záběrů v B-ROLL, z videa jen hlas")
+    vz.add_argument("--bez-brollu", dest="bez_brollu", action="store_true", help="záběry z B-ROLL do reelu nedávat")
     vz.add_argument("--preset", default="medium")
     vz.set_defaults(f=krok_vzhled)
     pd = sub.add_parser("podklady", help="podklady k efektům z knihovny stylů: zapsat, co zákaznice dodala, a vypsat, co chybí")

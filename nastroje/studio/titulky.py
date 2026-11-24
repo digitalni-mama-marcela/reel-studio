@@ -845,10 +845,13 @@ class Kreslic:
         pred, data = None, None
         for i in range(self.n):
             klic = self.stav(i / FPS)
-            za = self.maska is not None and any(self.za_hlavou(p) for p in klic)
-            if klic != pred or za:
+            # během b-rollu pod hlasem (prekryvy.py) jde text vždy před záběr: za hlavou cizího člověka by nešel číst
+            v_brollu = any(pk["od"] <= i / FPS < pk["do"] for pk in self.osa.get("prekryvy") or [])
+            za = self.maska is not None and not v_brollu and any(self.za_hlavou(p) for p in klic)
+            if klic != pred or za or v_brollu != getattr(self, "_v_brollu", False):
                 data = self.snimek(klic, i if za else None)
                 pred = klic
+                self._v_brollu = v_brollu
             yield data
 
     def obdelniky(self):

@@ -20,7 +20,8 @@ from .hlaseni import VERZE_STUDIA
 PODSLOZKY = ("PODKLADY-SEM", "VYSTUP", "PRACOVNI")
 VIDEO_PRIPONY = {".mp4", ".mov", ".m4v", ".mts", ".avi", ".mkv", ".webm", ".3gp"}
 NAHRAVKY = "NAHRAVKY-OBRAZOVKY"          # podsložka PODKLADY-SEM; videa v ní nejsou klipy jejího mluvení
-NAHRAVKY_PRIPONY = {".mp4", ".mov"}      # co umí vložka (prvky/vlozka.py)
+NAHRAVKY_PRIPONY = {".mp4", ".mov"}
+BROLL = "B-ROLL"                         # podsložka PODKLADY-SEM: záběry přes celý obraz pod hlasem (prekryvy.py)      # co umí vložka (prvky/vlozka.py)
 
 
 def slug(nazev, max_delka=40):
@@ -49,6 +50,7 @@ def zaloz_reel(koren, nazev, kdy=None):
     for p in PODSLOZKY:
         (cil / p).mkdir(parents=True)
     (cil / "PODKLADY-SEM" / NAHRAVKY).mkdir()
+    (cil / "PODKLADY-SEM" / BROLL).mkdir()
     stav = {"verze_studia": VERZE_STUDIA, "nazev": nazev, "slozka": cil.name,
             "zalozeno": datetime.now().isoformat(timespec="seconds"), "kroky": {}, "poradi": []}
     (cil / "PRACOVNI" / "stav.json").write_text(json.dumps(stav, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -56,6 +58,7 @@ def zaloz_reel(koren, nazev, kdy=None):
         "Sem nahraj natočené video (jedno nebo dvě se stejným obsahem) a případné screenshoty.\n"
         "Nahrávky obrazovky (z telefonu nebo počítače) dej do složky NAHRAVKY-OBRAZOVKY.\n"
         "Studio je vloží do reelu jako video v rámečku.\n"
+        "Záběry, které mají běžet přes celou obrazovku pod tvým hlasem (b-roll), dej do složky B-ROLL.\n"
         "Originál zůstane tam, kde je. Studio si ho jen zkopíruje.\n", encoding="utf-8")
     pripis_do_seznamu(koren, cil.name, nazev, "založeno")
     return cil

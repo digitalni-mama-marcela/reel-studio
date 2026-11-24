@@ -20,7 +20,7 @@ jobs:
           - os: macos-latest
             nazev: mac-apple-silicon
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 150
     defaults:
       run:
         shell: bash
@@ -176,6 +176,15 @@ jobs:
           "$($STUDIO kde | grep '^ffmpeg:' | cut -d' ' -f2- | tr -d '\r' | sed 's/ffmpeg\(\.exe\)\{0,1\}$/ffprobe\1/')" -v error -select_streams v:0 \
             -show_entries stream=pix_fmt,color_transfer -of csv=p=0 "$R/PRACOVNI/klip-1/video-pripravene.mp4" | tee hdr-vysledek.txt
           grep -q "yuv420p,bt709" hdr-vysledek.txt
+
+      # Jen na zkušebních větvích (main zůstává rychlá): každý efekt a styl z knihovny do hotového videa, snímky v artefaktu.
+      - name: 9 Vsechny efekty a styly z knihovny
+        if: startsWith(github.ref_name, 'zkouska-')
+        run: |
+          R=$(tail -1 zaloz.txt | tr -d '\r')
+          DATA=$($STUDIO kde | grep '^Prostředí a modely:' | cut -d' ' -f4- | tr -d '\r')
+          if [ "$RUNNER_OS" = Windows ]; then PY="$DATA/venv/Scripts/python.exe"; else PY="$DATA/venv/bin/python"; fi
+          "$PY" "$GITHUB_WORKSPACE/.github/zkouska/vsechny_efekty.py" "$R" vysledky/efekty $STUDIO
 
       - name: Ulozit vysledky
         if: always()
