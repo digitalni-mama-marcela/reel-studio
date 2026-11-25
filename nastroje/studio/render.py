@@ -155,17 +155,24 @@ def _pred_po_zaklad(prvky_pred_po, zaklad, pracovni):
 
 
 def _zvuk_se_zvuky(osa, pracovni):
-    """Zvuk reelu pro render: srovnaný zvuk, a když osa má zvukové efekty, přimíchané (zvuk-s-efekty.wav)."""
-    zvuk_nrm = Path(pracovni) / "zvuk-srovnany.wav"
+    """Zvuk reelu pro render: srovnaný zvuk, a když osa má zvukové efekty, přimíchané (zvuk-s-efekty.wav).
+    B-roll pod hlasem: zvuk záběrů tiše pod hlasem (zvuk-s-prostredim.wav), když ho zákaznice nevypnula."""
+    zvuk = Path(pracovni) / "zvuk-srovnany.wav"
     if osa.get("zvuky"):
         from . import zvuky
         k_mixu = zvuky.podle_nastaveni(osa)      # styl zákaznice (krok styl): výběr zvuků a hlasitost; bez stylu beze změny
-        if not k_mixu:
-            return zvuk_nrm
-        fx = Path(pracovni) / "zvuk-s-efekty.wav"
-        zvuky.primichej(zvuk_nrm, fx, k_mixu)
-        return fx
-    return zvuk_nrm
+        if k_mixu:
+            fx = Path(pracovni) / "zvuk-s-efekty.wav"
+            zvuky.primichej(zvuk, fx, k_mixu)
+            zvuk = fx
+    if osa.get("prekryvy") and osa.get("zvuk_zaberu", False):
+        amb = prekryvy_modul.zvuk_prostredi(osa["prekryvy"], osa["delka"], Path(pracovni) / "zvuk-zaberu.wav")
+        if amb:
+            mix, zisk = prekryvy_modul.primichej_prostredi(zvuk, amb, Path(pracovni) / "zvuk-s-prostredim.wav")
+            if mix:
+                osa["zvuk_zaberu_db"] = round(zisk, 1)
+                return mix
+    return zvuk
 
 
 def _poloz_text_na_zaklad(osa, zaklad, zvuk_nrm, kreslic, vystup, pracovni, preset, mereni_zakladu):

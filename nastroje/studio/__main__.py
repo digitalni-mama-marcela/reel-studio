@@ -9,6 +9,7 @@
   editor          editor přepisu v prohlížeči, uloží PRACOVNI/upravy.json
   plan-reelu      stránka Plán reelu: scény jako karty, vlastní média, věty s prvky
   oprava-titulku  Claude opraví chyby přepisu v titulcích před náhledem (video se nestříhá)
+  zabery          záběry pro b-roll pod hlasem: kvalita, nejlepší chvilky, náhledy pro Clauda, katalog
   styl            kód stylu z knihovny stylů nebo věta zákaznice (písmo větší…), zapíše PRACOVNI/styl.json a vzhled.json
   stav            co je hotové
 
@@ -338,7 +339,16 @@ def krok_nahled(a):
     vynechat_ticho, hlaseni = strih.rozsir_vynechat_do_ticha(klipy, vyber, vynechat)
     for h in hlaseni:
         k.info(h)
-    osa = strih.osa_cela(klipy, vyber) if a.cele else strih.sestav_osu(klipy, vyber, vynechat=vynechat_ticho or vynechat, rezy=rezy)
+    # tempo (Marcela 24. 11. 2026): úderně / běžně / procítěně, pamatuje se v PRACOVNI/tempo.json
+    cesta_tempa = s["pracovni"] / "tempo.json"
+    tempo = a.tempo or (projekt.nacti_json(cesta_tempa, {}) or {}).get("tempo") or "bezne"
+    if a.tempo:
+        projekt.uloz_json(cesta_tempa, {"tempo": tempo})
+    if tempo != "bezne":
+        k.info({"uderne": "Tempo úderné: i kratší pauzy se zkracují, b-roll se střídá rychleji.",
+                "procitene": "Tempo procítěné: mezi myšlenkami zůstává chvilka ticha, b-roll déle a s prolnutím."}[tempo])
+    osa = strih.osa_cela(klipy, vyber) if a.cele else strih.sestav_osu(klipy, vyber, vynechat=vynechat_ticho or vynechat, rezy=rezy, tempo=tempo)
+    osa["tempo"] = tempo
     if a.cele:
         k.info("Bez střihu: video celé, %s, nic se nezkracuje." % cas_text(osa["delka"]))
     osa["vynechat_zadano"] = {kk: v for kk, v in vynechat.items() if v}
@@ -948,44 +958,53 @@ def krok_vzhled(a):
             return k.kod()
         od = veta_slova[vid][0]["start"]
         osa["vsuvky"].append({"text": text, "od": round(od, 2), "do": round(min(od + 2.4, veta_slova[vid][-1]["end"] + 0.6), 2)})
-    # b-roll pod hlasem (prekryvy.py): záběry z PODKLADY-SEM/B-ROLL přes celý obraz, hlas běží dál
+    # b-roll pod hlasem (prekryvy.py, zabery.py): chvilky ze záběrů v PODKLADY-SEM/B-ROLL (a stálé knihovny MOJE-ZABERY
+    # podle přiřazení) přes celý obraz, hlas běží dál
     from . import prekryvy as _pk
     osa["prekryvy"] = []
-    broll_prani = (a.broll or []) + ulozeno.get("broll", [])
-    jen_hlas = bool(a.jen_hlas or ulozeno.get("jen_hlas")) and not a.bez_brollu
+    ulozene_prani = [] if a.zrus_broll else ulozeno.get("broll", [])
+    broll_prani = list(dict.fromkeys((a.broll or []) + ulozene_prani))
+    jen_hlas = bool(a.jen_hlas or (ulozeno.get("jen_hlas") and not a.s_tvari)) and not a.bez_brollu
+    bez_zvuku_zaberu = bool(a.bez_zvuku_zaberu or (ulozeno.get("bez_zvuku_zaberu") and not a.se_zvukem_zaberu))
     if not a.bez_brollu:
-        podkl = _podklady_reelu(r, a)
-        zabery = [(pp, _pk.info(pp)) for pp in _pk.najdi(podkl)]
-        for pp, inf in zabery:
-            if not inf:
-                k.info("Záběr %s v B-ROLL nejde přečíst (nebo je kratší než 1 s), vynechávám ho." % pp.name)
-        zabery = [(pp, inf) for pp, inf in zabery if inf]
+        chvilky, popsane = _chvilky_reelu(r, a, k, s["pracovni"] / "zabery")
         poradi_vet = list(dict.fromkeys(vid for u in osa["useky"] for vid in u.get("vety", []) if vid in veta_slova))
         prirazeni = {}
-        for b in broll_prani:
-            jm, _, kde = b.rpartition("@")
-            soubor = next((pp for pp, _ in zabery if pp.name.lower() == jm.strip().lower()), None)
-            vid = kde.strip()
+        for b_ in broll_prani:
+            jm, _, kde = b_.rpartition("@")
+            jm, vid = jm.strip(), kde.strip()
+            cil = next((c["id"] for c in chvilky if c["id"].lower() == jm.lower()), None) or \
+                next((c["soubor"] for c in chvilky if Path(c["soubor"]).name.lower() == jm.lower()), None)
             if vid.isdigit() and 0 < int(vid) <= len(poradi_vet):
                 vid = poradi_vet[int(vid) - 1]
-            if soubor is None or vid not in veta_slova:
-                k.cervena("b-roll '%s' neznám: záběr musí být ve složce PODKLADY-SEM/B-ROLL a věta v reelu." % b,
-                          "zapiš třeba --broll \"kavarna.mov@4\" (název souboru @ číslo věty).")
+            if cil is None or vid not in veta_slova:
+                k.cervena("b-roll '%s' neznám: chvilka nebo záběr musí být v katalogu (B-ROLL nebo MOJE-ZABERY) a věta v reelu." % b_,
+                          "zapiš třeba --broll \"kavarna-kava@4\" (název chvilky nebo souboru @ číslo věty), názvy vypíše STUDIO zabery.")
                 return k.kod()
-            prirazeni[vid] = soubor
-        if zabery:
+            prirazeni[vid] = cil
+        auto = [c for c in chvilky if not c.get("jen_prirazeni")]
+        if auto or prirazeni:
             vyhradit = {cta_veta} | {m.get("veta") for m in osa.get("mini", []) if m.get("vyzva")}
-            osa["prekryvy"] = _pk.naplanuj([(vid, veta_slova[vid]) for vid in poradi_vet], zabery, prirazeni,
-                                           jen_hlas, osa["delka"], vyhradit)
+            osa["prekryvy"] = _pk.naplanuj([(vid, veta_slova[vid]) for vid in poradi_vet], chvilky, prirazeni,
+                                           jen_hlas, osa["delka"], vyhradit, osa.get("tempo", "bezne"))
+            osa["zvuk_zaberu"] = not bez_zvuku_zaberu
             if osa["prekryvy"]:
-                k.info("B-roll pod hlasem: %d záběrů, celkem %.1f s%s (%s)." % (
-                    len(osa["prekryvy"]), sum(x["do"] - x["od"] for x in osa["prekryvy"]),
-                    ", celý reel jen hlas" if jen_hlas else "", ", ".join(
-                        "%s %.1f–%.1f s" % (Path(x["soubor"]).name, x["od"], x["do"]) for x in osa["prekryvy"])))
+                stabu = sum(1 for x in osa["prekryvy"] if x["pohyb"].startswith("stab"))
+                drzene = [x for x in osa["prekryvy"] if not x["pohyb"].startswith("stab")]
+                n_ = len(drzene)
+                k.info("B-roll pod hlasem: %d %s, celkem %.1f s%s%s%s (%s)." % (
+                    n_, "záběr" if n_ == 1 else "záběry" if 2 <= n_ <= 4 else "záběrů", sum(x["do"] - x["od"] for x in osa["prekryvy"]),
+                    ", celý reel jen hlas" if jen_hlas else "",
+                    (", rychlý začátek %d střihů" % stabu) if stabu else "",
+                    "" if bez_zvuku_zaberu else ", zvuk záběrů tiše pod hlasem",
+                    ", ".join("%s %.1f–%.1f s" % (x["chvilka"], x["od"], x["do"]) for x in drzene)))
+                if chvilky and not popsane:
+                    k.info("Chvilky zatím nemají popis, rozmístil jsem je podle kvality. Podle smyslu vět je přiřadíš po "
+                           "STUDIO zabery (náhledy v PRACOVNI/zabery).")
             else:
                 k.info("Záběry v B-ROLL jsou, ale v reelu pro ně není volná věta (první věta a výzva zůstávají s tváří).")
         elif jen_hlas:
-            k.cervena("režim jen hlas potřebuje záběry ve složce PODKLADY-SEM/B-ROLL.",
+            k.cervena("režim jen hlas potřebuje použitelné záběry ve složce PODKLADY-SEM/B-ROLL (nebo přiřazené z MOJE-ZABERY).",
                       "řekni zákaznici, ať do té složky dá aspoň dva záběry, a spusť vzhled znovu.")
             return k.kod()
     # poloha obličeje v každém klipu (místní měření, s uložením)
@@ -1056,7 +1075,7 @@ def krok_vzhled(a):
         "vzhled": styl.split("+")[0], "titulky_z": titulky_z, "hook": {"text": hook_text, "zvyraznit": zvyraznit, "vypnuto": bool(a.bez_hooku)},
         "mini": [{kk: vv for kk, vv in m.items() if kk in ("text", "styl", "efekt", "veta", "od", "do")} for m in osa["mini"] if m.get("styl") != "mini_silny"],
         "vsuvky": (a.vsuvka or []) + ulozeno.get("vsuvky", []), "zoom": bool(pouzit_zoom), "vyzva": not a.bez_vyzvy,
-        "broll": list(dict.fromkeys(broll_prani)), "jen_hlas": jen_hlas,
+        "broll": broll_prani, "jen_hlas": jen_hlas, "bez_zvuku_zaberu": bez_zvuku_zaberu,
         "upravy": ulozeno.get("upravy") or {}})
     # Pojistka (Marcela 23. 11. 2026): nic, co si zákaznice vybrala, nesmí z videa potichu vypadnout.
     from . import zadani as _zadani
@@ -1129,6 +1148,97 @@ def krok_vzhled(a):
 def _podklady_reelu(r, a):
     """Složka s obrázky k reelu: --podklady, jinak PODKLADY-SEM reelu."""
     return Path(a.podklady).expanduser() if getattr(a, "podklady", None) else projekt.slozky(r)["podklady"]
+
+
+def _chvilky_reelu(r, a, k, nahledy):
+    """Chvilky ze záběrů reelu (B-ROLL, studio je rozmisťuje samo) a ze stálé knihovny MOJE-ZABERY (jen podle přiřazení).
+    Nové a změněné záběry změří a zapíše do katalogu. Vrátí (chvilky, jestli mají popis)."""
+    from . import zabery
+    out, popsane = [], False
+    zdroje = [(_pk_slozka(r, a), False, False), (zabery.knihovna(r), True, True)]
+    for slozka, rekurz, jen_prir in zdroje:
+        if not zabery.najdi(slozka, rekurz) and not (slozka / zabery.KATALOG).exists():
+            continue
+        kat, nove = zabery.aktualizuj(slozka, nahledy, rekurz, hlaseni=None)
+        for jm in nove:
+            z = kat["zabery"][jm]
+            if z.get("vyrazeno"):
+                k.info("Záběr %s nepoužiju: %s." % (jm, z["vyrazeno"]))
+        for c in zabery.chvilky(slozka, kat):
+            c["jen_prirazeni"] = jen_prir
+            out.append(c)
+            popsane = popsane or bool(c.get("popis"))
+    return out, popsane
+
+
+def _pk_slozka(r, a):
+    from . import prekryvy
+    return prekryvy.slozka(_podklady_reelu(r, a))
+
+
+def krok_zabery(a):
+    """Záběry pro b-roll pod hlasem: změří nové záběry (kvalita, nejlepší chvilky), připraví náhledy pro Clauda,
+    vypíše katalog a věty reelu (k přiřazení podle smyslu). S --popis zapíše, co na záběrech je."""
+    from . import zabery
+    r = _reel(a.reel)
+    s = projekt.slozky(r)
+    k = Krok("Záběry", s["pracovni"])
+    nahledy = s["pracovni"] / "zabery"
+    zdroje = [("B-ROLL", _pk_slozka(r, a), False), ("MOJE-ZABERY", zabery.knihovna(r), True)]
+    if a.popis:
+        try:
+            popis = json.loads(Path(a.popis).expanduser().read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            k.cervena("popis záběrů nejde přečíst: %s." % e, "zapiš JSON {\"soubor.mov\": {\"popis\": …, \"chvilky\": [{\"c\": 1, \"nazev\": …}]}}.")
+            return k.kod()
+        zbyva = dict(popis)
+        for _, slozka, _ in zdroje:
+            if (slozka / zabery.KATALOG).exists():
+                kat, neznam = zabery.zapis_popis(slozka, {j: p for j, p in zbyva.items()})
+                zbyva = {j: zbyva[j] for j in neznam}
+        if zbyva:
+            k.info("Tyhle záběry v katalogu nejsou: %s." % ", ".join(zbyva))
+    radky, bez_popisu, nahl = [], [], []
+    for jmeno, slozka, rekurz in zdroje:
+        if not zabery.najdi(slozka, rekurz) and not (slozka / zabery.KATALOG).exists():
+            continue
+        kat, nove = zabery.aktualizuj(slozka, nahledy, rekurz, hlaseni=None)
+        radky.append("%s (%s): %d záběrů%s" % (jmeno, slozka, len(kat["zabery"]), (", nově prohlédnuté: %s" % ", ".join(nove)) if nove else ""))
+        for jm, z in sorted(kat["zabery"].items()):
+            if z.get("vyrazeno"):
+                radky.append("  %s: nepoužitelný, %s" % (jm, z["vyrazeno"]))
+                continue
+            for c in z["chvilky"]:
+                radky.append("  %s  [%s %s–%s, %s%s]%s%s" % (
+                    zabery.id_chvilky(jm, c), jm, zabery.cas(c["od"]), zabery.cas(c["do"]), c["energie"],
+                    (", " + c["nalada"]) if c.get("nalada") else "", ("  " + c["popis"]) if c.get("popis") else "",
+                    "  (vyřazená)" if c.get("vyradit") else ""))
+            if not z.get("popis") or any(not c.get("popis") for c in z["chvilky"]):
+                bez_popisu.append(jm)
+            for konc in (".jpg", "-chvilky.jpg"):
+                p_ = nahledy / (zabery._bezpecne(jm) + konc)
+                if p_.exists() and jm in bez_popisu:
+                    nahl.append(str(p_))
+    if not radky:
+        k.cervena("žádné záběry pro b-roll.", "řekni zákaznici, ať dá záběry do PODKLADY-SEM/B-ROLL v reelu "
+                  "(nebo stálé do složky %s) a spusť zabery znovu." % zabery.knihovna(r))
+        return k.kod()
+    for x in radky:
+        k.info(x)
+    osa_soubor = s["pracovni"] / "casova-osa.json"
+    if osa_soubor.exists():
+        osa = strih.nacti_osu(osa_soubor)
+        poradi = list(dict.fromkeys(v for u in osa["useky"] for v in u.get("vety", [])))
+        texty = {}
+        for kl in projekt.nacti_klipy(r):
+            for v in kl["vety"]:
+                texty[v["id"]] = " ".join(w["w"] for w in v["slova"]).strip()
+        k.info("Věty reelu (číslo pro --broll \"chvilka@číslo\"):\n" + "\n".join(
+            "  %d. %s" % (i + 1, texty.get(v, v)) for i, v in enumerate(poradi)))
+    if bez_popisu:
+        k.info("Bez popisu: %s. Prohlédni náhledy a zapiš popis (--popis soubor.json): %s" % (", ".join(bez_popisu), " ".join(nahl)))
+    k.zelena("katalog záběrů je aktuální (%s)." % ", ".join(str(sl / zabery.KATALOG_TXT) for _, sl, _ in zdroje if (sl / zabery.KATALOG_TXT).exists()))
+    return k.kod()
 
 
 def krok_vzdy(a):
@@ -1805,6 +1915,7 @@ def main(argv=None):
     nh.add_argument("--vystrihnout", help="úseky k vystřižení podle času originálu: k1:10.92-11.13;k3:21.8-22.1 (přeřek, „mmm“); \"\" = žádné")
     nh.add_argument("--cele", action="store_true", help="bez střihu: celé video tak, jak je natočené (žádné pauzy ani věty pryč)")
     nh.add_argument("--bez-titulku", action="store_true", help="náhled bez titulků (rychlejší, jako dřív)")
+    nh.add_argument("--tempo", choices=("uderne", "bezne", "procitene"), help="úderně (kratší pauzy, rychlejší b-roll), procítěně (pauzy mezi myšlenkami, delší b-roll s prolnutím); pamatuje se")
     nh.set_defaults(f=krok_nahled)
     vz = sub.add_parser("vzhled", help="hotový reel s hookem, titulky a vsuvkami z poslední časové osy")
     vz.add_argument("--reel", required=True)
@@ -1868,8 +1979,17 @@ def main(argv=None):
     vz.add_argument("--broll", action="append", help="záběr z PODKLADY-SEM/B-ROLL k větě: soubor@číslo-věty; lze víckrát (jinak studio rozmístí samo)")
     vz.add_argument("--jen-hlas", dest="jen_hlas", action="store_true", help="celý reel ze záběrů v B-ROLL, z videa jen hlas")
     vz.add_argument("--bez-brollu", dest="bez_brollu", action="store_true", help="záběry z B-ROLL do reelu nedávat")
+    vz.add_argument("--s-tvari", dest="s_tvari", action="store_true", help="zpátky z režimu jen hlas: tvář a záběry jen u některých vět")
+    vz.add_argument("--zrus-broll", dest="zrus_broll", action="store_true", help="zapomenout dřívější přiřazení záběrů k větám (--broll)")
+    vz.add_argument("--bez-zvuku-zaberu", dest="bez_zvuku_zaberu", action="store_true", help="zvuk záběrů (voda, kroky) pod hlas nedávat; pamatuje se")
+    vz.add_argument("--se-zvukem-zaberu", dest="se_zvukem_zaberu", action="store_true", help="zvuk záběrů zase zapnout")
     vz.add_argument("--preset", default="medium")
     vz.set_defaults(f=krok_vzhled)
+    zb = sub.add_parser("zabery", help="záběry pro b-roll: kvalita, nejlepší chvilky, náhledy, katalog a věty reelu")
+    zb.add_argument("--reel", required=True)
+    zb.add_argument("--podklady", help="složka podkladů (výchozí PODKLADY-SEM reelu)")
+    zb.add_argument("--popis", help="JSON s popisem záběrů a chvilek od Clauda (názvy, popis, nálada, vyřazení)")
+    zb.set_defaults(f=krok_zabery)
     pd = sub.add_parser("podklady", help="podklady k efektům z knihovny stylů: zapsat, co zákaznice dodala, a vypsat, co chybí")
     pd.add_argument("--reel", required=True)
     pd.add_argument("--nastav", action="append", help="efekt.pole=hodnota (třeba ig_komentar.slovo=STUDIO); lze víckrát")

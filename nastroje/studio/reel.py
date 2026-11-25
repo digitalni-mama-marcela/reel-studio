@@ -21,6 +21,7 @@ PODSLOZKY = ("PODKLADY-SEM", "VYSTUP", "PRACOVNI")
 VIDEO_PRIPONY = {".mp4", ".mov", ".m4v", ".mts", ".avi", ".mkv", ".webm", ".3gp"}
 NAHRAVKY = "NAHRAVKY-OBRAZOVKY"          # podsložka PODKLADY-SEM; videa v ní nejsou klipy jejího mluvení
 NAHRAVKY_PRIPONY = {".mp4", ".mov"}
+KNIHOVNA_ZABERU = "MOJE-ZABERY"           # stálá složka záběrů vedle reelů (zabery.py)
 BROLL = "B-ROLL"                         # podsložka PODKLADY-SEM: záběry přes celý obraz pod hlasem (prekryvy.py)      # co umí vložka (prvky/vlozka.py)
 
 
@@ -59,7 +60,16 @@ def zaloz_reel(koren, nazev, kdy=None):
         "Nahrávky obrazovky (z telefonu nebo počítače) dej do složky NAHRAVKY-OBRAZOVKY.\n"
         "Studio je vloží do reelu jako video v rámečku.\n"
         "Záběry, které mají běžet přes celou obrazovku pod tvým hlasem (b-roll), dej do složky B-ROLL.\n"
+        "Záběry, které chceš používat pořád (kafe, pracovní stůl, procházka), dej do složky MOJE-ZABERY vedle reelů.\n"
         "Originál zůstane tam, kde je. Studio si ho jen zkopíruje.\n", encoding="utf-8")
+    knihovna = koren / KNIHOVNA_ZABERU
+    if not knihovna.exists():
+        knihovna.mkdir()
+        (knihovna / "SEM-DEJ-ZABERY.txt").write_text(
+            "Sem dej záběry, které chceš používat v reelech pořád (b-roll pod tvůj hlas): kafe, pracovní stůl,\n"
+            "procházka, děti při hře, ruce u práce. Klidně dlouhé, tak jak jsi je natočila, i ve složkách.\n"
+            "Studio je samo projde, najde v nich nejlepší chvilky a zapíše si, co na nich je (KATALOG-ZABERU.txt).\n"
+            "Do reelu je dá jen tam, kde se hodí k tomu, co říkáš.\n", encoding="utf-8")
     pripis_do_seznamu(koren, cil.name, nazev, "založeno")
     return cil
 

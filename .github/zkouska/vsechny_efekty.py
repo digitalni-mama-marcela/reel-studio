@@ -67,9 +67,17 @@ def ve_videu(k, osa):
         return bool(osa.get("hook")) or bool(typy & {"karty_slov", "skladany_nadpis", "hravy_nadpis"})
     if k == "broll":      # krátké zkušební video (3 věty): první věta zůstává s tváří, záběr se vejde jeden
         return len(osa.get("prekryvy") or []) >= 1
-    if k == "jen-hlas":   # celý reel ze záběrů, bez mezery
+    if k in ("jen-hlas", "tempo-procitene", "broll-podle-smyslu"):   # celý reel ze záběrů, bez mezery
         pk = osa.get("prekryvy") or []
-        return len(pk) >= 2 and pk[0]["od"] == 0 and abs(pk[-1]["do"] - osa["delka"]) < 0.05
+        souvisle = len(pk) >= 2 and pk[0]["od"] == 0 and abs(pk[-1]["do"] - osa["delka"]) < 0.05 and \
+            all(abs(a["do"] - b["od"]) < 0.01 for a, b in zip(pk, pk[1:]))
+        spatne = {"roztreseny.mp4", "blika.mp4"} & {Path(x["soubor"]).name for x in pk}     # vadné záběry se nepoužijí
+        staby = [x for x in pk if x.get("pohyb", "").startswith("stab")]
+        if k == "jen-hlas":   # rychlý začátek, zvuk záběrů pod hlasem
+            return souvisle and not spatne and len(staby) >= 5 and osa.get("zvuk_zaberu_db") is not None
+        if k == "tempo-procitene":   # bez rychlého začátku, prolnutí
+            return souvisle and not spatne and not staby and all(x["nabeh"] >= 0.25 for x in pk[1:])
+        return souvisle and {"voda-tekouci", "knihovna-kava"} <= {x["chvilka"] for x in pk}
     if k == "velke_slovo":
         return any(m.get("styl") == "slovo_velke" for m in osa.get("mini", []))
     if k == "casomira":
@@ -88,8 +96,8 @@ def cas_efektu(k, osa):
         kand = [m for m in osa.get("mini", []) if m.get("vyzva") or m.get("styl") == "mini_silny"]
     if k == "vsuvka":
         kand = osa.get("vsuvky", [])
-    if k in ("broll", "jen-hlas"):
-        kand = osa.get("prekryvy", [])
+    if k in ("broll", "jen-hlas", "tempo-procitene", "broll-podle-smyslu"):
+        kand = [x for x in osa.get("prekryvy", []) if not x.get("pohyb", "").startswith("stab")] or osa.get("prekryvy", [])
     if kand and "od" in kand[0]:
         x = kand[0]
         return x["od"] + min(1.2, (x.get("do", x["od"] + 1) - x["od"]) * 0.6)
@@ -116,7 +124,9 @@ for pol in ("hrud", "vedle", "dole"):
         ulohy.append(([], "titulky-%s-%s" % (pol, rez), {"pol": pol, "rez": rez}))
 ulohy.append(([], "nadpis-uprostred", {"pN": "stred"}))
 # b-roll pod hlasem (prekryvy.py): dva záběry v PODKLADY-SEM/B-ROLL, jeden na šířku, jeden HDR jako z iPhonu
-ulohy += [(["broll"], "broll", {}), (["jen-hlas"], "jen-hlas", {})]
+ulohy += [(["broll"], "broll", {}), (["jen-hlas"], "jen-hlas", {}), (["tempo-procitene"], "tempo-procitene", {}),
+          (["broll-podle-smyslu"], "broll-podle-smyslu", {})]
+BROLL_ULOHY = (["broll"], ["jen-hlas"], ["tempo-procitene"], ["broll-podle-smyslu"])
 import os  # noqa: E402
 if os.environ.get("JEN"):        # jen vybrané položky (čárkami), pro ladění
     ulohy = [u for u in ulohy if u[1] in os.environ["JEN"].split(",")]
@@ -136,6 +146,37 @@ subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=108
                 "zscale=t=linear:npl=203,format=gbrpf32le,zscale=p=bt2020:t=arib-std-b67:m=bt2020nc:r=tv,format=yuv420p10le",
                 "-c:v", "libx265", "-x265-params", "log-level=error", "-tag:v", "hvc1", "-color_primaries", "bt2020",
                 "-color_trc", "arib-std-b67", "-colorspace", "bt2020nc", str(b / "hdr-iphone.mov")], check=True)
+# vadné záběry (studio je musí vyřadit), záběr se zvukem (zvuk záběrů pod hlasem) a záběr ve stálé knihovně
+foto = ["-f", "lavfi", "-i", "mandelbrot=size=1300x2100:rate=30:start_scale=0.02:end_scale=0.02"]
+subprocess.run([ff, "-y", "-v", "error"] + foto + ["-t", "10", "-vf",
+                "crop=1080:1920:'100+14*sin(n*2.1)+9*sin(n*3.7)':'90+12*cos(n*2.6)'", "-pix_fmt", "yuv420p",
+                str(b / "roztreseny.mp4")], check=True)
+subprocess.run([ff, "-y", "-v", "error"] + foto + ["-t", "10", "-vf",
+                "crop=1080:1920:100:90,eq=brightness='0.07*mod(n,2)':eval=frame", "-pix_fmt", "yuv420p",
+                str(b / "blika.mp4")], check=True)
+subprocess.run([ff, "-y", "-v", "error"] + foto + ["-f", "lavfi", "-i", "anoisesrc=c=pink:a=0.3:d=12", "-t", "12",
+                "-vf", "crop=1080:1920:'20+n':90", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", str(b / "voda.mp4")],
+               check=True)
+kn = R.parent / "MOJE-ZABERY"
+kn.mkdir(exist_ok=True)
+subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=1080x1920:rate=30", "-t", "9",
+                "-pix_fmt", "yuv420p", str(kn / "kava.mp4")], check=True)
+kod_z, out_z = beh("zabery", "--reel", str(R))
+print(out_z[-1500:], flush=True)
+kat = json.loads((b / "katalog-zaberu.json").read_text(encoding="utf-8"))["zabery"]
+vyrazene = {j for j, z in kat.items() if z.get("vyrazeno")}
+print("Katalog: %d záběrů, vyřazené %s" % (len(kat), sorted(vyrazene)), flush=True)
+if kod_z != 0 or not {"roztreseny.mp4", "blika.mp4"} <= vyrazene or "voda.mp4" in vyrazene:
+    print("✗ zabery: vadné záběry nevyřadil nebo vyřadil dobrý", flush=True)
+    sys.exit(1)
+popis = R / "PRACOVNI" / "zabery-popis.json"
+popis.write_text(json.dumps({"voda.mp4": {"popis": "tekoucí voda", "chvilky": [{"c": 1, "nazev": "voda tekoucí", "popis": "voda teče", "nalada": "klidná"}]},
+                             "kava.mp4": {"popis": "kafe", "chvilky": [{"c": 1, "nazev": "knihovna kava", "popis": "kafe", "nalada": "klidná"}]}},
+                            ensure_ascii=False), encoding="utf-8")
+kod_z, out_z = beh("zabery", "--reel", str(R), "--popis", str(popis))
+if kod_z != 0 or "voda-tekouci" not in out_z or "knihovna-kava" not in out_z:
+    print("✗ zabery --popis: %s" % out_z[-600:], flush=True)
+    sys.exit(1)
 vysledky, chyby = [], 0
 for efs, nazev, kw in ulohy:
     for f in (R / "VYSTUP").glob("reel-*"):
@@ -147,12 +188,19 @@ for efs, nazev, kw in ulohy:
                                                           if h.split(".")[0] in efs), []),
              ("plan", "--reel", str(R)),
              ("vzhled", "--reel", str(R), "--plan", "--zoom", "--hook", "Já už se nechci učit CapCut")
-             + (() if efs in (["broll"], ["jen-hlas"]) else ("--bez-brollu",)) + (("--jen-hlas",) if efs == ["jen-hlas"] else ())]
+             + (() if efs in BROLL_ULOHY else ("--bez-brollu",))
+             + (("--jen-hlas",) if efs in (["jen-hlas"], ["tempo-procitene"], ["broll-podle-smyslu"]) else ())
+             + (("--broll", "voda-tekouci@2", "--broll", "knihovna-kava@3") if efs == ["broll-podle-smyslu"] else ())]
+    if efs == ["tempo-procitene"]:
+        kroky.insert(0, ("nahled", "--reel", str(R), "--tempo", "procitene", "--bez-editoru"))
+        kroky.append(("nahled", "--reel", str(R), "--tempo", "bezne", "--bez-editoru"))
     kody = []
     for k in kroky:
         kod_, out = beh(*k)
         kody.append(kod_)
         log += out
+    if efs == ["tempo-procitene"]:
+        kody.pop()                                     # poslední je vrácení tempa, ne vzhled
     mp4 = [m for m in sorted((R / "VYSTUP").glob("reel-*.mp4")) if "telefon" not in m.name]
     stav = "✓"
     if not mp4:
@@ -161,6 +209,9 @@ for efs, nazev, kw in ulohy:
         poz = (cerv[-1] if cerv else log.strip().splitlines()[-1] if log.strip() else "")[:200]
     else:
         osa = json.loads((R / "PRACOVNI" / "casova-osa-vzhled.json").read_text(encoding="utf-8"))
+        if efs in BROLL_ULOHY:
+            print("   " + ", ".join("%s %s %.1f–%.1f" % (x["chvilka"], x.get("pohyb", ""), x["od"], x["do"])
+                                   for x in osa.get("prekryvy", [])) + "  zvuk %s dB" % osa.get("zvuk_zaberu_db"), flush=True)
         k = efs[0] if efs else None
         if k and not ve_videu(k, osa):
             stav = "✗ EFEKT CHYBÍ VE VIDEU"

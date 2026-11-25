@@ -33,6 +33,9 @@ PODIL_TICHA = 0.20   # co je pod touhle částí hlasitosti řeči, je ticho (de
 PRESAH_PRED = 0.15   # o kolik smí okno střihu sahat přes konec sousedního slova (jeho čas bývá moc dlouhý)
 MIN_ZBYTEK = 0.5     # kratší zbytek věty vedle vystřižené fráze se vystřihne taky (osamocené slůvko se ztrácí)
 PRESAH_DO = 0.02     # o kolik smí střih sahat do začátku vlastního slova (čas začátku bývá o něco pozdě)
+TEMPO_PAUZA = {"uderne": 0.20, "bezne": MAX_PAUZA, "procitene": MAX_PAUZA}   # od jaké délky se pauza zkracuje
+TEMPO_NADECH = {"procitene": 0.40}   # kolik ticha navíc nechat v dlouhé pauze (procítěné tempo)
+DLOUHA_PAUZA = 0.55  # pauza aspoň takhle dlouhá je mezi myšlenkami (procítěné tempo ji nechá dýchat)
 PODIL_RECI = 0.45    # co je pod touhle částí hlasitosti řeči mezi dvěma slovy, není řeč (dech, šustění)
 
 
@@ -209,7 +212,7 @@ def vnitrni_ticha(en, od, do, min_delka=MAX_PAUZA):
     return out
 
 
-def mezery_mezi_slovy(en, slova, od, do):
+def mezery_mezi_slovy(en, slova, od, do, max_pauza=MAX_PAUZA):
     """Pauzy mezi sousedními slovy delší než MAX_PAUZA, měřené od skutečného konce řeči za slovem po skutečný začátek
     řeči před dalším slovem (hlasitost pod PODIL_RECI není řeč). OVĚŘENO 19. 10. 2026: mezi „video,“ a „klidně“
     zůstalo 1,4 s dechu a šustění, které práh ticha PODIL_TICHA nepoznal. Vrátí seznam (začátek, konec) pauz."""
@@ -222,7 +225,7 @@ def mezery_mezi_slovy(en, slova, od, do):
     n = len(rec)
     out = []
     for a, b in zip(slova, slova[1:]):
-        if b["start"] - a["end"] <= MAX_PAUZA or a["end"] < od or b["start"] > do:
+        if b["start"] - a["end"] <= max_pauza or a["end"] < od or b["start"] > do:
             continue
         lo, hi = max(0, int((a["end"] - 0.3) / OKNO)), min(n, int((a["end"] + 0.35) / OKNO))
         hl = np.where(rec[lo:hi])[0]
@@ -230,7 +233,7 @@ def mezery_mezi_slovy(en, slova, od, do):
         lo, hi = max(0, int((b["start"] - 0.35) / OKNO)), min(n, int((b["start"] + 0.1) / OKNO))
         hl = np.where(rec[lo:hi])[0]
         zacatek_b = (lo + hl[0]) * OKNO if len(hl) else b["start"]
-        if zacatek_b - konec_a > MAX_PAUZA:
+        if zacatek_b - konec_a > max_pauza:
             # body střihu v opravdovém tichu (OVĚŘENO 19. 10.: střih hned za hlasitou částí sekl do dozvuku „vypadat“)
             x, jx = tiche_misto(en, konec_a, min(zacatek_b, konec_a + 0.4), konec_a + PO)
             x = za_doznenim(hladke, noise, p90, x, zacatek_b - PRED - 0.05)
@@ -243,14 +246,18 @@ def mezery_mezi_slovy(en, slova, od, do):
                     y, jy = (i_x + tiche[-1]) * OKNO, True
             # jen když jsou oba body v jistém tichu (OVĚŘENO 19. 10., reel 3: časy slov z přepisu byly posunuté
             # a střih by šel doprostřed slova)
-            if jx and jy and y - x > MAX_PAUZA:
+            if jx and jy and y - x > max_pauza:
                 out.append((float(max(od, x)), float(min(do, y))))
     return [(round(x, 3), round(y, 3)) for x, y in out if y - x > 0.05]
 
 
-def rozdel_na_ticha(en, od, do, slova=None):
+def rozdel_na_ticha(en, od, do, slova=None, tempo="bezne"):
     """Rozdělí úsek <od, do> na části bez dlouhého ticha. Po řeči zůstane PO, před řečí PRED ticha.
-    slova: slova úseku (zdrojové časy); pauzy mezi nimi se zkrátí i s tichými zvuky uvnitř (mezery_mezi_slovy)."""
+    slova: slova úseku (zdrojové časy); pauzy mezi nimi se zkrátí i s tichými zvuky uvnitř (mezery_mezi_slovy).
+    tempo (Marcela 24. 11. 2026): „uderne“ zkrátí i kratší pauzy (od TEMPO_PAUZA s), „procitene“ nechá v dlouhé pauze
+    (mezi myšlenkami) až TEMPO_NADECH s ticha navíc, ať věta dozní; „bezne“ je jako dřív."""
+    max_pauza = TEMPO_PAUZA.get(tempo, MAX_PAUZA)
+    nadech = TEMPO_NADECH.get(tempo, 0.0)
     casti, zacatek = [], od
     # okraje pauzy do opravdového ticha (20 dB pod řečí, stejná mez jako kontrola): střih po PO za řečí a PRED před ní
     # nesmí sedět v dozvuku nebo nádechu (OVĚŘENO 19. 10. reel 3, střih −16 dB)
@@ -259,16 +266,18 @@ def rozdel_na_ticha(en, od, do, slova=None):
     hladke = np.convolve(en, np.ones(5) / 5, mode="same")
     tiche20 = hladke <= noise + 0.1 * (p90 - noise)
     pauzy = []
-    for a, b in vnitrni_ticha(en, od, do):
+    for a, b in vnitrni_ticha(en, od, do, max_pauza):
         i0, i1 = int((a + PO) / OKNO), int((b - PRED) / OKNO)
         idx = np.where(tiche20[i0:i1])[0]
         if len(idx):
             konec_reci = za_doznenim(hladke, noise, p90, (i0 + idx[0]) * OKNO, (i0 + idx[-1] + 1) * OKNO - 0.05)
             pauzy.append((konec_reci, (i0 + idx[-1] + 1) * OKNO))
-    for x, y in mezery_mezi_slovy(en, slova or [], od, do):
+    for x, y in mezery_mezi_slovy(en, slova or [], od, do, max_pauza):
         pauzy = [(a, b) for a, b in pauzy if not (a >= x - 0.02 and b <= y + 0.02)]   # tichá místa uvnitř pauzy
         pauzy.append((x, y))
     pauzy.sort()
+    if nadech:
+        pauzy = [(a + min(nadech, b - a - 0.12), b) if b - a >= DLOUHA_PAUZA else (a, b) for a, b in pauzy]
     for konec_casti, nova_zacatek in pauzy:
         if konec_casti >= nova_zacatek - 0.02 or konec_casti - zacatek < MIN_CAST or do - nova_zacatek < MIN_CAST:
             continue
@@ -499,7 +508,7 @@ def _bez_rezu(casti, rezy):
     return out
 
 
-def sestav_osu(klipy, vyber, hook=None, vsuvky=None, vynechat=None, rezy=None):
+def sestav_osu(klipy, vyber, hook=None, vsuvky=None, vynechat=None, rezy=None, tempo="bezne"):
     """klipy: seznam slovníků {cesta, vety, en, delka, vypln (volitelně)}. vyber: seznam (číslo klipu, id věty) v pořadí ve videu.
     vynechat: {id věty: [pořadí slov]} slova, která se vystřihnou.
     rezy: {číslo klipu od 0: [(od, do), ...]} úseky v čase originálu, které se vystřihnou ručně (Marcela 18. 11. 2026:
@@ -529,7 +538,7 @@ def sestav_osu(klipy, vyber, hook=None, vsuvky=None, vynechat=None, rezy=None):
                 ids.append(k["vety"][i]["id"])
         cele = all(j == 0 and kk == len(k["vety"][i]["slova"]) for _, i, j, kk in g)
         veta_slova = [(k["vety"][i]["id"], w) for _, i, j, kk in g for w in k["vety"][i]["slova"][j:kk]]
-        casti = _bez_rezu(slij_kratke_mezery(rozdel_na_ticha(k["en"], vst, vyst, [w for _, w in veta_slova])), (rezy or {}).get(c))
+        casti = _bez_rezu(slij_kratke_mezery(rozdel_na_ticha(k["en"], vst, vyst, [w for _, w in veta_slova], tempo)), (rezy or {}).get(c))
         for ro, rd in (rezy or {}).get(c, []):
             veta_slova = [(vid, dict(w, start=rd) if ro <= w["start"] < rd and w["end"] > rd else w)
                           for vid, w in veta_slova if not (ro <= w["start"] and w["end"] <= rd)]
@@ -549,7 +558,7 @@ def sestav_osu(klipy, vyber, hook=None, vsuvky=None, vynechat=None, rezy=None):
             "klipy": [k["cesta"] for k in klipy], "useky": useky, "slova": slova,
             "delka": round(vystup_od, 3), "hook": hook, "vsuvky": vsuvky or [],
             "vyber": [[c, vid] for c, vid in vyber], "vynechat": {k: sorted(v) for k, v in (vynechat or {}).items() if v},
-            "rezy": {str(c): [list(r) for r in v] for c, v in (rezy or {}).items() if v}}
+            "rezy": {str(c): [list(r) for r in v] for c, v in (rezy or {}).items() if v}, "tempo": tempo}
 
 
 def osa_cela(klipy, vyber=None):
