@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw
 
 from ..titulky import FPS, HORNI_OKRAJ, SIRKA, pismo
 from ._spolecne import karta, nasob_alfu, pruzne, rozloz_klic, stav_obecny
+from ..jazyk import text
 
 W, H = 960, 470
 STOPY = ["T1", "V2", "V1", "A1", "A2"]
@@ -102,7 +103,7 @@ def _panel(nahledy, vlna, nazev):
 def vykresli(spec, styl, klic):
     t, odchod = rozloz_klic(klic, spec, 0)
     panel, pad = _panel(tuple(spec.get("nahledy") or ()), tuple(round(float(v), 3) for v in spec.get("vlna") or ()),
-                        spec.get("nazev", "Časová osa"))
+                        spec.get("nazev", text("casova_osa", spec)))
     im = panel.copy()
     d = ImageDraw.Draw(im)
     delka = float(spec["do"]) - float(spec["od"])

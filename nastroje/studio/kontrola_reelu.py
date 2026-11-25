@@ -97,7 +97,7 @@ def kontrola_slov(mp4, osa, pracovni, model="turbo", seznam_oprav=None):
     """Přečte hotový reel znovu a porovná s tím, co mělo zaznít. Vypadlá slova u střihu jsou červená."""
     from .prepis import prepis_klipu
 
-    _, vety = prepis_klipu(mp4, Path(pracovni) / "kontrola-prepis", model, "x")
+    _, vety = prepis_klipu(mp4, Path(pracovni) / "kontrola-prepis", model, "x", osa.get("jazyk", "cs"))
     if seznam_oprav:
         opravy.oprav_vety(vety, seznam_oprav)
         opravy.slij_cisla(vety)

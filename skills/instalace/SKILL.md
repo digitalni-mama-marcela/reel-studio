@@ -5,7 +5,8 @@ description: Jednorázová příprava počítače pro Claude Reel Studio na Macu
 
 # Instalace studia (jen jednou)
 
-Zákaznice nikdy neotevřela terminál. Mluv s ní česky, tykej, krátké věty. Ptej se po jedné otázce a nabídni
+Zákaznice nikdy neotevřela terminál. Mluv s ní jejím jazykem (česky, nebo slovensky podle její první zprávy;
+hlášky studia jsou česky, převeď je), tykej, krátké věty. Ptej se po jedné otázce a nabídni
 volby. Odborná slova (Python, uv, ffmpeg) jí neříkej, řekni „nástroje pro střih“.
 
 Zákaznice nic neinstaluje sama. Studio si všechno, co potřebuje, stáhne samo do své složky prostředí

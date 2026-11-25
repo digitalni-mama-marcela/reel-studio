@@ -36,8 +36,20 @@ def nacti_zvuk(wav):
         return np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768.0
 
 
-def prepis_klipu(klip, vystup, model_nazev=VYCHOZI_MODEL, predpona="v", jazyk="cs"):
-    """Přepíše klip. Číslo věty je predpona + pořadí (například k1-v03)."""
+def rozpoznej_jazyk(model, zvuk):
+    """Čeština, nebo slovenčina, podle hlasu (Marcela 25. 11. 2026: studio pozná jazyk samo).
+    OVĚŘENO 25. 11. 2026 (turbo, 3 úseky): slovenský hlas sk 0,99, český cs 1,00, i u věty o pěti slovech.
+    Vrátí (kód, podrobnosti). Jiný jazyk než tyhle dva se nevybírá, jen se zapíše do podrobností."""
+    from .jazyk import JAZYKY
+    nej, jistota, vse = model.detect_language(zvuk, language_detection_segments=3, vad_filter=True)
+    d = dict(vse)
+    kod = max(JAZYKY, key=lambda k: d.get(k, 0.0))
+    return kod, {"nejpravdepodobnejsi": nej, "jistota": round(float(jistota), 3),
+                 "cs": round(float(d.get("cs", 0.0)), 3), "sk": round(float(d.get("sk", 0.0)), 3)}
+
+
+def prepis_klipu(klip, vystup, model_nazev=VYCHOZI_MODEL, predpona="v", jazyk="auto"):
+    """Přepíše klip. Číslo věty je predpona + pořadí (například k1-v03). jazyk: "auto" (pozná z hlasu), "cs", "sk"."""
     from faster_whisper import WhisperModel
 
     vystup = Path(vystup)
@@ -49,6 +61,9 @@ def prepis_klipu(klip, vystup, model_nazev=VYCHOZI_MODEL, predpona="v", jazyk="c
     t = time.time()
     model = WhisperModel(model_nazev, device="cpu", compute_type="int8")
     cas_nacteni = time.time() - t
+    rozpoznani = None
+    if jazyk in (None, "", "auto"):
+        jazyk, rozpoznani = rozpoznej_jazyk(model, zvuk)
     t = time.time()
     segmenty, info = model.transcribe(zvuk, language=jazyk, word_timestamps=True, vad_filter=True,
                                       condition_on_previous_text=False, beam_size=5)
@@ -67,7 +82,8 @@ def prepis_klipu(klip, vystup, model_nazev=VYCHOZI_MODEL, predpona="v", jazyk="c
                "nasobek_realneho_casu": round(cas_prepis / delka, 3) if delka else None,
                "pocet_vet": len(vety), "pocet_slov": sum(len(v["slova"]) for v in vety),
                "nejvyssi_pamet_mb": round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2) if resource else None,
-               "jazyk": info.language, "jistota_jazyka": round(info.language_probability, 3)}
+               "jazyk": info.language, "jistota_jazyka": round(info.language_probability, 3),
+               "jazyk_poznany_z_hlasu": rozpoznani}
     (vystup / "prepis.json").write_text(json.dumps({"metriky": metriky, "vety": vety}, ensure_ascii=False, indent=1),
                                         encoding="utf-8")
     uloz_vety(vety, vystup / "prepis-vety.txt")

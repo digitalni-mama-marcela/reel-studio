@@ -278,16 +278,18 @@ def _vety_reelu(reel):
 
 
 def slovo_vyzvy(vety):
-    """Slovo pro komentář z věty s výzvou: slovo velkými písmeny, jinak slovo za „napiš (mi) (do komentáře)“."""
+    """Slovo pro komentář z věty s výzvou: slovo velkými písmeny, jinak slovo za „napiš (mi) (do komentáře)“
+    (slovensky „napíš (mi) do komentára“)."""
+    from .jazyk import NE_SLOVO, SLOVO_VYZVY
     for v in reversed(vety or []):
         t = v["text"]
-        if "komentá" not in t.lower() and "napiš" not in t.lower():
+        if "komentá" not in t.lower() and not re.search(r"nap[ií]š", t, re.I):
             continue
         velke = [w.strip(".,!?„“\"") for w in t.split() if w.strip(".,!?„“\"").isupper() and len(w.strip(".,!?„“\"")) > 2]
         if velke:
             return velke[0]
-        m = re.search(r"napiš(?:\s+mi)?(?:\s+do\s+komentáře)?\s+[„\"]?(\w{3,})", t, re.I)
-        if m and m.group(1).lower() not in ("komentáře", "komentář", "mi", "do"):
+        m = SLOVO_VYZVY.search(t)
+        if m and m.group(1).lower() not in NE_SLOVO:
             return m.group(1).upper()
     return None
 
@@ -404,7 +406,7 @@ def najdi_vetu(vety, udaj):
 def _veta_vyzvy(vety):
     for i in range(len(vety) - 1, -1, -1):
         t = vety[i]["text"].lower()
-        if "komentá" in t or "napiš" in t or "sleduj" in t or "follow" in t:
+        if "komentá" in t or re.search(r"nap[ií]š", t) or "sleduj" in t or "follow" in t:
             return i
     return len(vety) - 1 if vety else None
 
@@ -741,7 +743,8 @@ def _sestav_spec(reel, karta, rad, od_v, do_v, kontext):
         slovo, odpoved, jmeno = h("slovo"), h("odpoved"), h("jmeno")
         if not (slovo and odpoved and jmeno):
             return None, "chybí slovo pro komentář, odpověď nebo jméno účtu"
-        spec.update({"vyzva": "Napiš do komentáře\n%s" % slovo.upper(), "slovo": slovo.upper(), "kdo": "tvuj_ucet",
+        from . import jazyk as _jazyk, projekt as _projekt
+        spec.update({"vyzva": "%s\n%s" % (_jazyk.text("napis_do_komentare", _projekt.jazyk_reelu(reel)), slovo.upper()), "slovo": slovo.upper(), "kdo": "tvuj_ucet",
                      "autorka": jmeno, "odpoved": odpoved, "fotka": h("fotka") or ""})
         spec["do"] = round(min(delka, max(do_v + 0.5, od_v + 3.3)), 2)
         return spec, None

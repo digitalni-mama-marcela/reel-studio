@@ -194,8 +194,11 @@ def _kresli_blok(spec, styl, t_rel, velikost=None):
                 sirka_pruhu = (cw + 20) * prog
                 if sirka_pruhu > 1:
                     pruh = Image.new("RGBA", img.size, (0, 0, 0, 0))
+                    # háček a čárka nad velkým písmenem (ŠTÚDIO, ČAS) musí být uvnitř pruhu, jinak tmavá na tmavé
+                    # kartě zmizí (OVĚŘENO 25. 11. 2026, slovenská výzva)
+                    horni = min(y + vr * 0.12, y + font.getbbox(c)[1] - 6)
                     ImageDraw.Draw(pruh).rounded_rectangle(
-                        (cx - 10, y + vr * 0.12, cx - 10 + sirka_pruhu, y + vr * 0.92), radius=14, fill=styl["marker"])
+                        (cx - 10, horni, cx - 10 + sirka_pruhu, y + vr * 0.92), radius=14, fill=styl["marker"])
                     img.alpha_composite(pruh)
                 barva = styl["barva_zvyrazneni"] if prog > 0.35 else styl["barva"]
             else:

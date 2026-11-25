@@ -19,6 +19,7 @@ from PIL import Image, ImageDraw
 
 from ..titulky import pismo
 from ._spolecne import karta, nasob_alfu, pruzne, rozloz_klic, stav_obecny
+from ..jazyk import text
 
 W, H = 330, 300
 SEDA = (120, 115, 112)
@@ -60,13 +61,13 @@ def vykresli(spec, styl, klic):
     od_var = t_reel - float(v.get("cas", spec["od"]))
     im, pad = karta(W, H, (255, 255, 255, 250), 22, stin=80)
     d = ImageDraw.Draw(im)
-    d.text((pad + 24, pad + 18), spec.get("nadpis", "tvůj vzhled"), font=pismo("InstrumentSerif-Italic.ttf", 34), fill=(40, 36, 36))
+    d.text((pad + 24, pad + 18), spec.get("nadpis", text("tvuj_vzhled", spec)), font=pismo("InstrumentSerif-Italic.ttf", 34), fill=(40, 36, 36))
     # rámeček s ukázkou písma
     d.rectangle((pad + 24, pad + 66, pad + 150, pad + 176), outline=(60, 56, 56), width=2)
     f = pismo(v.get("pismo", "PlayfairDisplay-wght.ttf"), 78, v.get("varianta"))
     d.text((pad + 87, pad + 121), "Aa", font=f, fill=(30, 28, 28), anchor="mm")
     d.text((pad + 166, pad + 80), v.get("nazev", ""), font=pismo("Inter-wght.ttf", 20, "SemiBold"), fill=(40, 36, 36))
-    d.text((pad + 166, pad + 106), "písmo nadpisů", font=pismo("Inter-wght.ttf", 17, "Regular"), fill=SEDA)
+    d.text((pad + 166, pad + 106), text("pismo_nadpisu", spec), font=pismo("Inter-wght.ttf", 17, "Regular"), fill=SEDA)
     barvy = v.get("barvy", [])[:6]
     for j, b in enumerate(barvy):
         q = pruzne((od_var - j * 0.07) / 0.2) if i > 0 or t > 0.2 else pruzne((t - 0.2 - j * 0.07) / 0.2)
@@ -75,7 +76,7 @@ def vykresli(spec, styl, klic):
         r = 19 * q
         cx, cy = pad + 44 + j * 50, pad + 214
         d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=_rgb(b), outline=(215, 210, 205), width=1)
-    d.text((pad + 24, pad + 252), spec.get("podpis", "na míru tobě"), font=pismo("InstrumentSerif-Italic.ttf", 24), fill=SEDA)
+    d.text((pad + 24, pad + 252), spec.get("podpis", text("na_miru", spec)), font=pismo("InstrumentSerif-Italic.ttf", 24), fill=SEDA)
     q = pruzne(t / 0.3)
     if q < 0.999:
         w2, h2 = max(1, int(im.width * (0.7 + 0.3 * q))), max(1, int(im.height * (0.7 + 0.3 * q)))

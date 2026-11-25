@@ -1,7 +1,8 @@
 {
  "verze_schematu": 1,
  "poznamka": "Nastavení zákaznice. Aktualizace studia tenhle soubor nikdy nepřepisuje (D18), nové položky jen přidá s výchozí hodnotou.",
- "jazyk": "cs",
+ "jazyk_reci": "auto",
+ "jazyk_poznamka": "Jazyk, kterým v reelech mluví: auto (studio pozná z hlasu češtinu, nebo slovenčinu), cs, sk.",
  "capcut": "zdarma",
  "vzhled": "serif",
  "jmeno": "",

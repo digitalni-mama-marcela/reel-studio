@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw
 
 from ..titulky import HORNI_OKRAJ, SIRKA, pismo
 from ._spolecne import SVESTKOVA, karta, kulata_fotka, nasob_alfu, pruzne, rozloz_klic, stav_obecny
+from ..jazyk import text
 
 W = 860
 CERNA = (20, 20, 20)
@@ -56,7 +57,7 @@ def _vyzva(text):
     return im
 
 
-def _pole(slovo_napsane, kurzor, odeslano_p, fotka_kdo):
+def _pole(slovo_napsane, kurzor, odeslano_p, fotka_kdo, jazyk="cs"):
     """Pole komentáře: kulatá fotka, napsaný text s kurzorem, vpravo kulaté tlačítko odeslat."""
     h = 104
     im, pad = karta(W, h, (255, 255, 255, 252), h // 2, stin=60, pad=20)
@@ -66,7 +67,7 @@ def _pole(slovo_napsane, kurzor, odeslano_p, fotka_kdo):
     if slovo_napsane:
         d.text((pad + 110, pad + h / 2), slovo_napsane, font=f, fill=CERNA, anchor="lm")
     else:
-        d.text((pad + 110, pad + h / 2), "Přidej komentář…", font=pismo("Montserrat-wght.ttf", 36, "Medium"), fill=SEDA, anchor="lm")
+        d.text((pad + 110, pad + h / 2), text("pridej_komentar", jazyk), font=pismo("Montserrat-wght.ttf", 36, "Medium"), fill=SEDA, anchor="lm")
     if kurzor:
         x = pad + 112 + f.getlength(slovo_napsane)
         d.line((x, pad + 30, x, pad + h - 30), fill=(0, 120, 255), width=3)
@@ -81,7 +82,7 @@ def _pole(slovo_napsane, kurzor, odeslano_p, fotka_kdo):
     return im
 
 
-def _komentar(kdo, slovo, autorka, odpoved, fotka_kdo, fotka_autorky, ukaz_odpoved):
+def _komentar(kdo, slovo, autorka, odpoved, fotka_kdo, fotka_autorky, ukaz_odpoved, jazyk="cs"):
     h = 230 if ukaz_odpoved else 112
     im, pad = karta(W, h, (255, 255, 255, 252), 28, stin=60, pad=20)
     d = ImageDraw.Draw(im)
@@ -90,7 +91,7 @@ def _komentar(kdo, slovo, autorka, odpoved, fotka_kdo, fotka_autorky, ukaz_odpov
     fs = pismo("Montserrat-wght.ttf", 24, "Medium")
     im.alpha_composite(kulata_fotka(fotka_kdo, 64), (pad + 22, pad + 22))
     d.text((pad + 104, pad + 22), kdo, font=fj, fill=CERNA)
-    d.text((pad + 104 + fj.getlength(kdo) + 14, pad + 26), "teď", font=fs, fill=SEDA)
+    d.text((pad + 104 + fj.getlength(kdo) + 14, pad + 26), text("ted", jazyk), font=fs, fill=SEDA)
     d.text((pad + 104, pad + 60), slovo, font=ft, fill=CERNA)
     if ukaz_odpoved:
         im.alpha_composite(kulata_fotka(fotka_autorky, 56), (pad + 104, pad + 134))
@@ -108,7 +109,7 @@ def vykresli(spec, styl, klic):
     slovo = spec.get("slovo", "STUDIO")
     fotka_kdo, fotka_autorky = spec.get("fotka_kdo"), spec.get("fotka")
     plat = Image.new("RGBA", (W + 80, 520), (0, 0, 0, 0))
-    vy = _vyzva(spec.get("vyzva", "Napiš do komentáře\nSTUDIO"))
+    vy = _vyzva(spec.get("vyzva", text("napis_do_komentare", spec) + "\nSTUDIO"))
     p = pruzne(t / 0.3)
     if p < 0.999:
         w2, h2 = max(1, int(vy.width * (0.7 + 0.3 * p))), max(1, int(vy.height * (0.7 + 0.3 * p)))
@@ -119,12 +120,12 @@ def vykresli(spec, styl, klic):
     if t < odeslani + 0.2:
         n = 0 if t < zac else min(len(slovo), int((t - zac) / max(psani, 0.01) * len(slovo)) + 1)
         kurzor = t < odeslani and int(t * 2.5) % 2 == 0
-        pole = _pole(slovo[:n], kurzor, max(0.0, (t - odeslani) / 0.2) if t >= odeslani else 0.0, fotka_kdo)
+        pole = _pole(slovo[:n], kurzor, max(0.0, (t - odeslani) / 0.2) if t >= odeslani else 0.0, fotka_kdo, spec.get("jazyk"))
         a = min(1.0, max(0.0, (t - 0.15) / 0.2))
         plat.alpha_composite(nasob_alfu(pole, a), ((plat.width - pole.width) // 2, y2))
     else:
         km = _komentar(spec.get("kdo", "tvuj_ucet"), slovo, spec.get("autorka", "digitalni_mama_marcela"),
-                       spec.get("odpoved", ""), fotka_kdo, fotka_autorky, t >= odpoved_t)
+                       spec.get("odpoved", ""), fotka_kdo, fotka_autorky, t >= odpoved_t, spec.get("jazyk", "cs"))
         posun = int(30 * (1 - min(1.0, (t - odeslani - 0.2) / 0.2)))
         plat.alpha_composite(nasob_alfu(km, min(1.0, (t - odeslani - 0.2) / 0.15)), ((plat.width - km.width) // 2, y2 + posun))
     return nasob_alfu(plat, odchod), (spec["x"] - 40, spec["y"] - 20)

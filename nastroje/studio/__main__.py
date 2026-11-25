@@ -186,19 +186,33 @@ def krok_prepis(a):
     if not klipy:
         k.cervena("chybí seznam klipů.", "nejdřív spusť kontrolu videa.")
         return k.kod()
-    seznam_oprav = projekt.seznam_oprav(r)
-    vzory = projekt.vzory_hlidanych(r)
+    # jazyk (Marcela 25. 11. 2026): auto = studio pozná z hlasu češtinu, nebo slovenčinu; --jazyk ho určí napevno
+    from . import jazyk as _jazyk
+    pozadany = a.jazyk or nast.get("jazyk_reci") or "auto"
+    jazyk_reelu, seznam_oprav, vzory = None, None, None
     slov, delka, oprav, hlidanych, nejistych, cas = 0, 0.0, 0, [], 0, 0.0
     for kl in klipy:
         slozka = s["pracovni"] / ("klip-%d" % kl["n"])
         t = time.time()
-        metriky, vety = prepis.prepis_klipu(kl["pouzit"], slozka, a.model, "k%d-v" % kl["n"], nast.get("jazyk", "cs"))
+        metriky, vety = prepis.prepis_klipu(kl["pouzit"], slozka, a.model, "k%d-v" % kl["n"], jazyk_reelu or pozadany)
+        if jazyk_reelu is None:
+            jazyk_reelu = _jazyk.platny(metriky.get("jazyk"))
+            projekt.uloz_json(s["pracovni"] / "jazyk.json", {"jazyk": jazyk_reelu, "zdroj": "hlas" if pozadany == "auto" else "zadano",
+                                                             "rozpoznani": metriky.get("jazyk_poznany_z_hlasu")})
+            seznam_oprav = projekt.seznam_oprav(r, jazyk_reelu)
+            vzory = projekt.vzory_hlidanych(r, jazyk_reelu)
+            rp = metriky.get("jazyk_poznany_z_hlasu") or {}
+            k.info("Jazyk: %s%s." % (_jazyk.nazev(jazyk_reelu), (" (poznal jsem z hlasu, jistota %d %%)" % round(100 * rp.get(jazyk_reelu, 0)))
+                                     if rp else " (zadaný napevno)"))
+            if rp and rp.get("nejpravdepodobnejsi") not in _jazyk.JAZYKY:
+                k.info("⚠️ Hlas zní spíš jako jiný jazyk (%s). Studio umí češtinu a slovenčinu, přepsal jsem ho jako %s." %
+                       (rp.get("nejpravdepodobnejsi"), _jazyk.nazev(jazyk_reelu)))
         zaznam = opravy.oprav_vety(vety, seznam_oprav)
         opravy.slij_cisla(vety)
         nej = []
         if a.porovnat:
             druhy = "turbo" if a.model != "turbo" else "large-v3"
-            _, vety_b = prepis.prepis_klipu(kl["pouzit"], slozka / "porovnani", druhy, "k%d-v" % kl["n"], nast.get("jazyk", "cs"))
+            _, vety_b = prepis.prepis_klipu(kl["pouzit"], slozka / "porovnani", druhy, "k%d-v" % kl["n"], jazyk_reelu)
             opravy.oprav_vety(vety_b, seznam_oprav)
             nej = nejista.nejista_slova(vety, vety_b)
         else:
@@ -349,6 +363,7 @@ def krok_nahled(a):
                 "procitene": "Tempo procítěné: mezi myšlenkami zůstává chvilka ticha, b-roll déle a s prolnutím."}[tempo])
     osa = strih.osa_cela(klipy, vyber) if a.cele else strih.sestav_osu(klipy, vyber, vynechat=vynechat_ticho or vynechat, rezy=rezy, tempo=tempo)
     osa["tempo"] = tempo
+    osa["jazyk"] = projekt.jazyk_reelu(r)
     if a.cele:
         k.info("Bez střihu: video celé, %s, nic se nezkracuje." % cas_text(osa["delka"]))
     osa["vynechat_zadano"] = {kk: v for kk, v in vynechat.items() if v}
@@ -448,9 +463,13 @@ def _vychozi_hook(text, max_slov=10):
 def _auto_mini(osa, vety_text, veta_slova, hook_veta, cta_veta, nejvic=3):
     """Mikro-nadpisy z vlastních slov zákaznice: krátké údernější věty (3 až 6 slov) nebo věty s číslem. NÁVRH."""
     out = []
+    # krátká první věta (1,8 s, OVĚŘENO 25. 11. 2026): hook drží aspoň 2,6 s, mini nesmí naskočit pod ním
+    konec_hooku = float((osa.get("hook") or {}).get("do") or 0.0)
     for u in osa["useky"]:
         for vid in u.get("vety", []):
             if vid in (hook_veta, cta_veta) or vid not in veta_slova:
+                continue
+            if veta_slova[vid][0]["start"] < konec_hooku + 0.2:
                 continue
             txt = vety_text.get(vid, "").strip()
             slova = txt.rstrip(".!?").split()
@@ -1316,8 +1335,9 @@ def krok_oprava_titulku(a):
     if a.naucit:
         slozka = Path(r).parent / "NASTAVENI"
         slozka.mkdir(exist_ok=True)
-        soubor = slozka / "opravy-slov-cs.json"
-        data = projekt.nacti_json(soubor) or {"jazyk": "cs", "verze": 1, "opravy": {}}
+        j_ = projekt.jazyk_reelu(r)
+        soubor = slozka / ("opravy-slov-%s.json" % j_)
+        data = projekt.nacti_json(soubor) or {"jazyk": j_, "verze": 1, "opravy": {}}
         data.setdefault("opravy", {})
         for dv in a.naucit:
             spatne, _, dobre = dv.partition("=")
@@ -1898,6 +1918,7 @@ def main(argv=None):
     pr.add_argument("--reel", required=True)
     pr.add_argument("--model", default="turbo", help="turbo (rychlejší) nebo large-v3 (přesnější na jména)")
     pr.add_argument("--porovnat", action="store_true", help="přepsat i druhým modelem a označit nejistá slova")
+    pr.add_argument("--jazyk", choices=("auto", "cs", "sk"), help="jazyk řeči: auto (pozná z hlasu, výchozí), cs, sk")
     pr.set_defaults(f=krok_prepis)
     nv = sub.add_parser("navrh", help="zdvojené věty a návrh výběru")
     nv.add_argument("--reel", required=True)

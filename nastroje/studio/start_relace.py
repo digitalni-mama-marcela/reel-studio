@@ -102,5 +102,5 @@ def main(cwd=None, data_slozka=None, verze=None):
         pass
     if not poznamky:
         return None
-    return ("[Reel Studio, kontrola při otevření chatu] Než odpovíš, vyřeš se zákaznicí tohle (jednoduše, česky, "
+    return ("[Reel Studio, kontrola při otevření chatu] Než odpovíš, vyřeš se zákaznicí tohle (jednoduše, jejím jazykem, česky nebo slovensky, "
             "bez odborných slov):\n- " + "\n- ".join(poznamky))
