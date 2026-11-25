@@ -55,6 +55,7 @@ def priprav_vsechny(osa, styl, obliceje, podklady=None):
     """Zavolá pripravit() na každý prvek v osa["prvky"]. Vrátí seznam varování (česky), prázdný = v pořádku."""
     varovani = []
     for spec in osa.get("prvky", []):
+        spec.setdefault("jazyk", osa.get("jazyk", "cs"))      # pevné texty (Sledovat, pole komentáře) v jazyce reelu
         st = styl.get(spec["typ"], {})
         kontext = kontext_prvku(osa, obliceje, spec, podklady)
         if spec.get("za_hlavou", st.get("za_hlavou", getattr(modul(spec["typ"]), "ZA_HLAVOU", None))):

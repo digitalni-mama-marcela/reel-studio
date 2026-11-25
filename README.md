@@ -16,7 +16,7 @@ a 11. Nic neinstaluješ sama a nikdo po tobě nechce heslo: studio si stáhne sa
 programu Git.
 
 ## Pro Clauda: jak studio nainstalovat
-Zákaznice tě požádala o instalaci tohoto pluginu. Mluv s ní česky, tykej, krátce, bez odborných slov.
+Zákaznice tě požádala o instalaci tohoto pluginu. Mluv s ní česky, nebo slovensky (podle toho, jak píše ona), tykej, krátce, bez odborných slov.
 Před každým příkazem jí jednou větou řekni, co děláš. Nic nemaž a nic neměň mimo kroky níž.
 Repozitář do její složky nestahuj (žádné git clone) a git neinstaluj, není potřeba: plugin se stahuje jako jeden
 ZIP soubor podle katalogu na adrese níž (OVĚŘENO 20. 11. 2026 na Macu bez gitu: přidání, instalace i aktualizace).

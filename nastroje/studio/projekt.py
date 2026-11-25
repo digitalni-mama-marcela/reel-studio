@@ -39,9 +39,17 @@ def nastaveni(reel):
     for k, v in vychozi.items():
         data.setdefault(k, v)
     data["_soubor"] = str(cesta)
-    data["_opravy"] = str(_nastaveni_soubor(reel, "opravy-slov-cs.json"))
-    data["_hlidana"] = str(_nastaveni_soubor(reel, "hlidana-slova-cs.json"))
+    j = jazyk_reelu(reel)
+    data["_opravy"] = str(_nastaveni_soubor(reel, "opravy-slov-%s.json" % j))
+    data["_hlidana"] = str(_nastaveni_soubor(reel, "hlidana-slova-%s.json" % j))
     return data
+
+
+def jazyk_reelu(reel):
+    """Jazyk reelu z přepisu (PRACOVNI/jazyk.json), dokud není přepis, čeština."""
+    from . import jazyk
+    d = nacti_json(Path(reel) / "PRACOVNI" / "jazyk.json", {}) or {}
+    return jazyk.platny(d.get("jazyk"))
 
 
 def vzhled_upravy(reel):
@@ -73,12 +81,14 @@ def zapis_vzhled_upravu(reel, vzhled, cast, klic, hodnota, poznamka=None):
     return cesta
 
 
-def seznam_oprav(reel):
-    """Opravy slov: výchozí z balíčku plus vlastní zákaznice (její položky mají přednost). Nová výchozí slova
-    po aktualizaci studia tak platí i bez přepsání jejího souboru (D18)."""
-    vychozi = opravy.nacti_opravy(BALICEK / "NASTAVENI" / "opravy-slov-cs.json")
-    vlastni_soubor = Path(nastaveni(reel)["_opravy"])
-    if vlastni_soubor.resolve() != (BALICEK / "NASTAVENI" / "opravy-slov-cs.json").resolve():
+def seznam_oprav(reel, jazyk=None):
+    """Opravy slov v jazyce reelu: výchozí z balíčku plus vlastní zákaznice (její položky mají přednost). Nová výchozí
+    slova po aktualizaci studia tak platí i bez přepsání jejího souboru (D18)."""
+    j = jazyk or jazyk_reelu(reel)
+    zaklad = BALICEK / "NASTAVENI" / ("opravy-slov-%s.json" % j)
+    vychozi = opravy.nacti_opravy(zaklad)
+    vlastni_soubor = _nastaveni_soubor(reel, "opravy-slov-%s.json" % j)
+    if vlastni_soubor.resolve() != zaklad.resolve():
         vychozi.update(opravy.nacti_opravy(vlastni_soubor))
     return vychozi
 
@@ -185,11 +195,13 @@ def dalsi_cislo(slozka, predpona, pripona):
     return n + 1
 
 
-def vzory_hlidanych(reel):
-    """Hlídaná slova: výchozí z balíčku plus vlastní zákaznice."""
-    vzory = hlidana_slova.nacti_vzory(BALICEK / "NASTAVENI" / "hlidana-slova-cs.json")
-    vlastni = Path(nastaveni(reel)["_hlidana"])
-    if vlastni.resolve() != (BALICEK / "NASTAVENI" / "hlidana-slova-cs.json").resolve():
+def vzory_hlidanych(reel, jazyk=None):
+    """Hlídaná slova v jazyce reelu: výchozí z balíčku plus vlastní zákaznice."""
+    j = jazyk or jazyk_reelu(reel)
+    zaklad = BALICEK / "NASTAVENI" / ("hlidana-slova-%s.json" % j)
+    vzory = hlidana_slova.nacti_vzory(zaklad)
+    vlastni = _nastaveni_soubor(reel, "hlidana-slova-%s.json" % j)
+    if vlastni.resolve() != zaklad.resolve():
         patterns = {v.pattern for v in vzory}
         vzory += [v for v in hlidana_slova.nacti_vzory(vlastni) if v.pattern not in patterns]
     return vzory

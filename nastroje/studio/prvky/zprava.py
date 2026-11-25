@@ -19,6 +19,7 @@ spec["varovani"], když se kapsle nevešla mimo obličej. Klíče stav():
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from ..titulky import FPS, SIRKA, VYSKA, pismo
+from ..jazyk import text
 
 VYCHOZI_STYL = {
     "pismo": "Montserrat-wght.ttf",
@@ -312,7 +313,7 @@ def vykresli(spec, styl, klic):
     """Snímek prvku pro klíč ze stav(). Vrátí (RGBA obrázek, (x, y)) pro položení na plátno 1080x1920."""
     r = rozlozeni(spec, styl)
     r["komu"] = spec.get("komu", "PRO CLAUDA")
-    r["odeslano"] = spec.get("odeslano", "Odesláno")
+    r["odeslano"] = spec.get("odeslano", text("odeslano", spec))
     st = r["st"]
     n_celkem = len(" ".join(spec["text"].split()))
     if klic == "s":

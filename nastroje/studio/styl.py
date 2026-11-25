@@ -50,7 +50,9 @@ BARVY = {"kremova": "#F6EBD0", "bila": "#FFFFFF", "zluta": "#FFD43B", "oranzova"
 # česká slova barev ve větách (kořen bez diakritiky -> barva); zlatá a béžová nejsou na stránce, hodnoty NÁVRH
 KORENY_BAREV = [("tmave modr", "#1D3557"), ("cerven", "#E5383B"), ("ruzov", "#F28AB2"), ("modr", "#4EA8DE"),
                 ("zelen", "#52B788"), ("zlut", "#FFD43B"), ("oranzov", "#FF8C42"), ("fialov", "#A66CFF"),
-                ("cern", "#111111"), ("bil", "#FFFFFF"), ("zlat", "#D4AF37"), ("bezov", "#E8D5B7"), ("kremov", "#F6EBD0")]
+                ("cern", "#111111"), ("bil", "#FFFFFF"), ("zlat", "#D4AF37"), ("bezov", "#E8D5B7"), ("kremov", "#F6EBD0"),
+                # slovenčina (Marcela 25. 11. 2026): žltá, čierna, biela
+                ("zlt", "#FFD43B"), ("ciern", "#111111"), ("biel", "#FFFFFF")]
 POLOHY = {"na hrudi": "hrud", "hrud": "hrud", "vedle hlavy": "vedle", "vedle": "vedle", "dole": "dole"}
 POLOHY_TEXT = {"hrud": "na hrudi", "vedle": "vedle hlavy", "dole": "dole"}
 REZIMY = {"po jednom slove": "slovo", "po slovech": "slovo", "jedno slovo": "slovo", "cele vety": "veta", "vety": "veta",
@@ -589,8 +591,8 @@ def rozeber_vetu(veta, vzhled, aktualni):
             for k, v in upravy_titulku_rezim(vzhled, "veta").items():
                 akce.append({"co": "uprava", "cast": "titulky", "klic": k, "hodnota": v, "popis": "titulky po celých větách"})
         # větší / menší
-        if any(w in n for w in ("vetsi", "zvetsi", "vetsi pismo")) or any(w in n for w in ("mensi", "zmensi")):
-            nasobek = ZMENA_VELIKOSTI if any(w in n for w in ("vetsi", "zvetsi")) else 1 / ZMENA_VELIKOSTI
+        if any(w in n for w in ("vetsi", "zvetsi", "vetsi pismo", "vacs", "zvacs")) or any(w in n for w in ("mensi", "zmensi")):
+            nasobek = ZMENA_VELIKOSTI if any(w in n for w in ("vetsi", "zvetsi", "vacs", "zvacs")) else 1 / ZMENA_VELIKOSTI
             casti = [c for c in CASTI_NADPISU if _zaklad(vzhled, c)] if o_nadpisech else ["titulky"]
             for c in casti:
                 z = aktualni(c, "velikost") or _zaklad(vzhled, c).get("velikost", 58)

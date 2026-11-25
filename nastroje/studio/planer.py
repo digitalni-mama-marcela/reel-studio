@@ -100,9 +100,10 @@ def _typ_vety(text, je_prvni, je_posledni):
     t = text.lower()
     if je_prvni:
         return "hook"
-    if "komentá" in t or "follow" in t or (je_posledni and ("napiš" in t or "sleduj" in t)):
+    if "komentá" in t or "follow" in t or (je_posledni and (re.search(r"nap[ií]š", t) or "sleduj" in t)):
         return "vyzva"
-    if re.search(r"[„\"“][^“”\"]{3,}[“”\"]", text) or re.search(r"\b(řeknu|napíšu|zeptám)\b", t):
+    # slovenčina: poviem, napíšem, opýtam (sa)
+    if re.search(r"[„\"“][^“”\"]{3,}[“”\"]", text) or re.search(r"\b(řeknu|napíšu|zeptám|poviem|napíšem|opýtam)\b", t):
         return "zprava"
     if re.search(r"\b(ukážu|ukazuju|vidíš|vidím|složk|přepis|plán|storyboard|kliknu|nahraju|dám mu)", t):
         return "vlozka"

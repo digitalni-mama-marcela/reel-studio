@@ -12,6 +12,7 @@ from PIL import Image, ImageDraw
 
 from ..titulky import SIRKA, pismo
 from ._spolecne import karta, kulata_fotka, nasob_alfu, pruzne, rozloz_klic, stav_obecny
+from ..jazyk import text
 
 W, H = 820, 150
 MODRA = (0, 149, 246)
@@ -58,10 +59,10 @@ def vykresli(spec, styl, klic):
     fb = pismo("Montserrat-wght.ttf", 30, "Bold")
     if t < tuk + 0.09:
         d.rounded_rectangle((bx0, by0, bx1, by1), radius=16, fill=MODRA)
-        d.text(((bx0 + bx1) / 2, (by0 + by1) / 2), "Sledovat", font=fb, fill=(255, 255, 255), anchor="mm")
+        d.text(((bx0 + bx1) / 2, (by0 + by1) / 2), text("sledovat", spec), font=fb, fill=(255, 255, 255), anchor="mm")
     else:
         d.rounded_rectangle((bx0, by0, bx1, by1), radius=16, fill=(239, 239, 239), outline=(219, 219, 219), width=2)
-        d.text(((bx0 + bx1) / 2, (by0 + by1) / 2), "Sledováno", font=fb, fill=(20, 20, 20), anchor="mm")
+        d.text(((bx0 + bx1) / 2, (by0 + by1) / 2), text("sledovano", spec), font=fb, fill=(20, 20, 20), anchor="mm")
     if tuk - 0.05 <= t < tuk + 0.45:                       # kruh ťuknutí
         p = (t - tuk + 0.05) / 0.5
         r = 20 + 60 * p

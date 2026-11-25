@@ -37,6 +37,7 @@ from functools import lru_cache
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps
 
 from ..titulky import BOK, DOLNI_OKRAJ, FPS, HORNI_OKRAJ, SIRKA, VYSKA, pismo
+from ..jazyk import text as _text
 
 VYCHOZI_STYL = {
     "pismo": "Mulish-wght.ttf",
@@ -222,7 +223,7 @@ def _komentar_rozmer(text, w, st):
 
 
 @lru_cache(maxsize=64)
-def _komentar(jmeno, text, foto, w, st_klic):
+def _komentar(jmeno, text, foto, w, st_klic, jazyk="cs"):
     st = dict(st_klic)
     m = w / 820
     s = lambda v: int(round(v * m))
@@ -237,7 +238,7 @@ def _komentar(jmeno, text, foto, w, st_klic):
     for r in radky:
         d.text((ox + s(110), y), r, font=f, fill=st["inkoust"], anchor="lt")
         y += s(42)
-    d.text((ox + s(110), y + s(4)), "Odpovědět", font=_f(st, s(24), "SemiBold"), fill=st["seda"], anchor="lt")
+    d.text((ox + s(110), y + s(4)), _text("odpovedet", jazyk), font=_f(st, s(24), "SemiBold"), fill=st["seda"], anchor="lt")
     # srdíčko vpravo (dva kruhy a trojúhelník)
     cx, cy, r = ox + w - s(54), oy + s(58), s(11)
     d.ellipse([cx - 2 * r, cy - r, cx, cy + r], fill=st["srdce"])
@@ -278,13 +279,13 @@ def pripravit(spec, styl, kontext):
         raise ValueError("Papírová karta: druh musí být profil, otazka nebo komentar, zadáno %r." % druh)
     spec.setdefault("jmeno", "digitalni_mama_marcela")
     if druh == "profil":
-        spec["cisla"] = [list(map(str, c)) for c in (spec.get("cisla") or [["145", "příspěvků"], ["104 tis.", "sledujících"], ["6", "sleduji"]])]
+        spec["cisla"] = [list(map(str, c)) for c in (spec.get("cisla") or [["145", _text("prispevku", spec)], ["104 tis.", _text("sledujicich", spec)], ["6", _text("sleduji", spec)]])]
         if len(spec["cisla"]) != 3:
             raise ValueError("Papírová karta (profil): cisla musí mít 3 dvojice.")
     elif druh == "otazka":
         if not str(spec.get("text", "")).strip():
             raise ValueError("Papírová karta (otázka): chybí text.")
-        spec.setdefault("pole", "Napiš odpověď")
+        spec.setdefault("pole", _text("napis_odpoved", spec))
     else:
         texty = [str(t).strip() for t in spec.get("texty") or [] if str(t).strip()]
         if not texty:
@@ -368,7 +369,7 @@ def _obraz_karty(spec, st_klic, t_rel):
         return [(_otazka(spec["text"], spec["pole"], spec["jmeno"], spec["fotka"], w, n, kurzor, st_klic), 0, 0.0)]
     out, y = [], 0
     for i, text in enumerate(spec["texty"]):
-        img = _komentar(spec["jmeno"], text, spec["fotka"], w, st_klic)
+        img = _komentar(spec["jmeno"], text, spec["fotka"], w, st_klic, spec.get("jazyk", "cs"))
         out.append((img, y, spec["casy_rel"][i]))
         y += img.height - 2 * LEM + MEZERA_KOMENTARU
     return out
